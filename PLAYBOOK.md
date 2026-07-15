@@ -45,10 +45,12 @@ contribution priorities as captured in its PROFILE.md.
   `NEWCOMER_MAX_OPEN_UNREVIEWED` (default 3) replaces `MAX_OPEN_UNREVIEWED`
   until our first merge there. An unknown account opening many PRs at once
   reads as spam and poisons every later PR's review.
-- **Run promise** (drive it with `/simplicio-loop` when the host has it):
-  open PRs triaged AND (daily planning done, if it wasn't) AND (candidates
-  implemented until backlog empty or daily target reached) AND logs
-  committed and pushed. Never declare it true when a gate was skipped.
+- **Run promise** (drive it with `/simplicio-loop` when the host has it —
+  concrete scratchpad/promise wiring in SKILL.md's "Driving one iteration
+  with /simplicio-loop" section): open PRs triaged AND (daily planning
+  done, if it wasn't) AND (candidates implemented until backlog empty or
+  daily target reached) AND logs committed and pushed. Never declare it
+  true when a gate was skipped.
 
 ## Token economy (every run)
 

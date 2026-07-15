@@ -198,6 +198,62 @@ reached) AND logs updated, committed, and pushed.* Never declare the promise
 true when it isn't — fewer PRs with a logged reason satisfies it; a skipped
 gate does not.
 
+## Driving one iteration with /simplicio-loop (inner convergence loop)
+
+This skill's OUTER repetition — firing every N minutes/hours — comes from
+whatever scheduler invoked it: a host `/loop <interval>`, an OS/cloud cron
+job, or a scheduled task. That outer cadence is not this skill's concern;
+it just needs to behave correctly on each invocation, whatever fired it.
+
+WITHIN one outer invocation, when the host provides the `simplicio-loop`
+skill (<https://github.com/wesleysimplicio/simplicio-loop>), drive
+convergence toward the run promise through it instead of executing phases
+0–6 exactly once and stopping:
+
+1. Write `.orchestrator/loop/scratchpad.md` (under `$CLONE` once it exists,
+   else `$WORKSPACE`) per that skill's state-file contract:
+   ```yaml
+   ---
+   iteration: 1
+   max_iterations: 6          # small finite cap — THIS run converges; the
+                              # outer scheduler fires the next run later
+   completion_promise: "Open PRs against $UPSTREAM_REPO are triaged (CI
+     green or being fixed, reviewer feedback answered) AND (today's
+     planning cycle is done, if it wasn't already) AND (backlog candidates
+     are implemented until the backlog is empty or today's PR target is
+     reached) AND today's logs are updated, committed, and pushed."
+   evidence_required: true
+   mode: converge
+   started_at: "<ISO-8601>"
+   ---
+   <this run's goal: babysit $UPSTREAM_REPO's open PRs, run daily planning
+   if not already done today, implement backlog candidates within the
+   daily cap, then commit and push projects/$SLUG/ state.>
+   ```
+2. Let `/simplicio-loop` re-feed that goal each inner turn (babysit →
+   planning-if-due → implement → persist state) until the promise is
+   verified with in-turn evidence, or `max_iterations` fires — then stop.
+   The outer scheduler is what fires the *next* run, later.
+3. `/simplicio-loop`'s own preflight requires its bound operators
+   (`simplicio-mapper`, `simplicio-dev-cli` — see its SKILL.md) on PATH. If
+   either is missing, that host simply doesn't provide `/simplicio-loop`
+   here — do not block this loop over it. Fall back to executing phases
+   0–6 once, sequentially, then stop (the plain fallback already specified
+   throughout this file and PLAYBOOK.md). Same rule as `simplicio-runtime`
+   above: an accelerant, never a hard dependency of the OSS contribution
+   loop itself.
+4. Close with `/simplicio-learn` when the host provides it — folds durable
+   lessons into PLAYBOOK.md "Accumulated lessons" / PROFILE.md "Project
+   lessons". Fallback: append them manually before the final commit (as
+   PLAYBOOK.md Phase 6 already specifies).
+
+`max_iterations: 6` above is a starting default, not a hard rule — a
+project with a large, well-populated backlog and a healthy daily PR target
+well above the newcomer cap may warrant a higher cap so one outer
+invocation can actually clear more of the day's work; tune it in that
+project's PROFILE.md "Tunables" section, the same place `DAILY_PR_TARGET`
+and `DAILY_PR_HEALTHY` are overridden per project.
+
 ## Adversarial review (before every push)
 
 Preferred: run `/simplicio-review` on the branch (parallel subagents on
