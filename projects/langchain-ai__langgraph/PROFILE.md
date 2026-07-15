@@ -125,6 +125,7 @@ Last 30 merged PRs mix:
 - `STALE_CLOSE_DAYS=0` (never auto-close our own PRs here).
 
 ## Project lessons (append-only)
+- (2026-07-15) Removed from active scheduling by user decision: hard issue-first + assignment-first gate means we depend on a maintainer's action (assigning us the issue) with no guaranteed timeline before any implementation can start -- not a restriction we can self-satisfy on a schedule.
 - (2026-07-15) Hard issue-link + assignment gate enforced by CI bot; blind PRs
   are auto-closed within minutes. Assignment-first is mandatory, not optional.
 - (2026-07-15) Merged PR bodies are terse (`Fixes #NN` + 1–2 lines). Our

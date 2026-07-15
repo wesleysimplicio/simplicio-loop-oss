@@ -152,6 +152,7 @@ DIFF_LINES_TARGET=150       # matches the observed merged envelope
 ```
 
 ## Project lessons (append-only)
+- (2026-07-15) Removed from active scheduling by user decision: requires the human to sign the Home Assistant CLA once (one-time, cannot be satisfied autonomously). Re-add once the CLA is signed -- see BLOCKING PREREQUISITE above.
 
 - (2026-07-15) Default branch is `dev`, not `main` — PRs to `main` are
   auto-rejected.

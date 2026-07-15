@@ -84,6 +84,7 @@ could contribute here, and even then must not present agent-written work.
 - `NEWCOMER_MAX_OPEN_UNREVIEWED=0`.
 
 ## Project lessons (append-only)
+- (2026-07-15) Removed from active scheduling by user decision: this project's policy prohibits autonomous-agent PRs/issues outright (see BLOCKING POLICY above). No amount of quality/dedup diligence changes this -- do not re-add to the daily loop unless a human contributor personally claims and discloses AI assistance per the profile's "how a human unblocks this" note.
 - 2026-07-15: Read CONTRIBUTING.md + PR template FIRST in Phase R. transformers
   bans autonomous-agent contributions outright and warns of account blocks.
   Correct loop behavior = detect the prohibition, write it here, open nothing,

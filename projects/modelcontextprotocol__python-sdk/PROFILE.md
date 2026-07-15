@@ -83,4 +83,5 @@ An unattended, scheduled simplicio-loop-oss run cannot satisfy these prerequisit
 - `STALE_CLOSE_DAYS=0` (auto-close disabled; moot at 0 PRs).
 
 ## Project lessons (append-only)
+- (2026-07-15) Removed from active scheduling by user decision: this project's policy prohibits autonomous-agent PRs/issues outright (see BLOCKING POLICY above). No amount of quality/dedup diligence changes this -- do not re-add to the daily loop unless a human contributor personally claims and discloses AI assistance per the profile's "how a human unblocks this" note.
 - (2026-07-15) modelcontextprotocol org **enforces** an anti-autonomous-agent policy with org-wide bans for repeat offenders. Treat this like an unsigned CLA: autonomous PR/issue/comment filing is a HARD STOP. The loop's job here is candidate scouting + profile upkeep for a human, not autonomous filing.

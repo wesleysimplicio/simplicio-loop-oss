@@ -93,5 +93,6 @@ _Reconnaissance date: 2026-07-15. Author: wesleysimplicio (newcomer, 0 merges he
 - STALE_CLOSE_DAYS=0 (never auto-close our own PRs here).
 
 ## Project lessons (append-only)
+- (2026-07-15) Removed from active scheduling by user decision: hard issue-first + assignment-first gate means we depend on a maintainer's action (assigning us the issue) with no guaranteed timeline before any implementation can start -- not a restriction we can self-satisfy on a schedule.
 - (2026-07-15) Recon: issue-first+assignment-first is enforced by auto-close;
   high newcomer-PR closure rate; runtime bugs frequently belong to pydantic-core.
