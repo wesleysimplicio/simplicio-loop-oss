@@ -126,10 +126,17 @@ Extracted from the last ~30 merged PRs and 30 days of history:
 
 ## Tunables
 
-Defaults from `config.env` apply (`DAILY_PR_TARGET=10`, `DAILY_PR_HEALTHY=5`
-— healthy default here is 3–5 given review latency, `MAX_OPEN_UNREVIEWED=25`,
-`STALE_CLOSE_DAYS=4`, `STALE_PING_DAYS=14`, `MAX_SALVAGES_PER_DAY=1`,
-`DIFF_LINES_TARGET=250`).
+Overrides for this project (config.env defaults are conservative;
+hermes-agent's tens-of-thousands-PR queue justifies looser caps):
+
+- `MAX_OPEN_UNREVIEWED=25` (global default is 5)
+- `STALE_CLOSE_DAYS=4` (auto-close ENABLED here — global default 0/disabled —
+  because the queue pressure is real; all Phase 2.4 guards still apply)
+
+Everything else uses config.env defaults (`DAILY_PR_TARGET=10`,
+`DAILY_PR_HEALTHY=5` — healthy here is 3–5 given review latency,
+`STALE_PING_DAYS=14`, `MAX_SALVAGES_PER_DAY=1`, `DIFF_LINES_TARGET=250`).
+Newcomer gate does not apply: we have 3 merged PRs in this project.
 
 ## Project lessons (append-only)
 

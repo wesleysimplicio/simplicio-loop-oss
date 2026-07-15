@@ -39,9 +39,22 @@ contribution priorities as captured in its PROFILE.md.
   (merged/opened), logged cumulatively in every daily log. The cap never
   justifies lowering quality or skipping gates: exhausted candidates →
   fewer PRs that day, with the reason logged.
+- **Newcomer reputation gate**: in a project where we have zero merged PRs
+  (`gh pr list --author "@me" --state merged -L 1` empty),
+  `NEWCOMER_DAILY_PR_CAP` (default 2) replaces `DAILY_PR_TARGET` and
+  `NEWCOMER_MAX_OPEN_UNREVIEWED` (default 3) replaces `MAX_OPEN_UNREVIEWED`
+  until our first merge there. An unknown account opening many PRs at once
+  reads as spam and poisons every later PR's review.
+- **Run promise** (drive it with `/simplicio-loop` when the host has it):
+  open PRs triaged AND (daily planning done, if it wasn't) AND (candidates
+  implemented until backlog empty or daily target reached) AND logs
+  committed and pushed. Never declare it true when a gate was skipped.
 
 ## Token economy (every run)
 
+- When the host provides `/simplicio-orient` (terminal-first facts, clamped
+  output) and `/simplicio-compress` (terse logs), drive these rules through
+  them; otherwise apply them manually as written here.
 - Answer every fact about filesystem/git/processes via terminal with clamped
   output (head/tail/count/focused grep) — never dump whole files, diffs, or
   logs into context. Builds and tests always with summarized output (`-q`,
@@ -63,7 +76,11 @@ contribution priorities as captured in its PROFILE.md.
 5. Respect PROFILE.md "Forbidden themes", the generic forbidden classes
    (SKILL.md guardrails: mass mechanical cleanup, trivial-theme series,
    no-issue/no-symptom PRs), and contribution prerequisites (CLA, DCO
-   `Signed-off-by`, issue-first/discussion-first policies).
+   `Signed-off-by`, issue-first/discussion-first policies). **CLA is a
+   one-time HUMAN action**: if the org requires one the user hasn't signed,
+   hard stop — zero PRs, log it, ask the user; record the signature in
+   PROFILE.md once done. **DCO is ours**: `git commit -s` on every commit
+   when the profile says the project requires it.
 6. Run the adversarial review (SKILL.md) on the branch **before** push. Real
    finding → fix; no viable fix → abort the candidate.
 7. Follow the project's commit convention (PROFILE.md); default to
@@ -104,7 +121,11 @@ the best way to contribute here". Study, with clamped output:
    (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, `Makefile`,
    ...), CI workflows (`.github/workflows/*.yml` — what CI actually runs is
    the truth), test runners, linters/formatters, any repo-specific gate
-   scripts. Record exact commands.
+   scripts. Record exact commands, **including an "Audit commands" list for
+   Phase 3**: the generic `scripts/audit.py` only scans Python, so in
+   TS/Rust/Go/C++ (or mixed) repos the profile's own commands (`tsc
+   --noEmit`, `eslint`, `cargo clippy`, `go vet`, deprecation greps, etc.)
+   ARE the mechanical audit — audit.py degrades to SKIP lines there.
 3. **Benchmark snapshot (dated)** — the heart of the profile. From the last
    ~30 merged PRs and 30 days of history: merged mix (% fix vs feat vs
    docs), hot subsystems, **the diff-size envelope external contributors
@@ -126,7 +147,14 @@ the best way to contribute here". Study, with clamped output:
 6. **Strategy**: given all of the above, write a concrete recommendation —
    candidate sources ranked, areas to avoid, the PR format that passes,
    and realistic tunables (a slow-review project may warrant
-   `DAILY_PR_HEALTHY=2`).
+   `DAILY_PR_HEALTHY=2`). New projects start under the newcomer gate
+   (`NEWCOMER_DAILY_PR_CAP`/`NEWCOMER_MAX_OPEN_UNREVIEWED`) until the first
+   merge — the profile may make them even stricter, never looser.
+7. **Prerequisites check (blocking)**: CLA required and not signed → record
+   in the profile and STOP (ask the user; one-time per org). DCO required →
+   record "commit with `-s`" in the profile. Issue-first/assignment-first
+   policy (e.g. VS Code only accepts PRs for issues assigned to you) →
+   record it; candidates that violate it are rejected in Phase 4.
 
 PROFILE.md required sections: `Identity`, `Contribution rules digest`,
 `Build / test / lint commands`, `PR conventions`, `Maintainer priorities`,
@@ -196,15 +224,19 @@ gh pr list --repo "$UPSTREAM_REPO" --author "@me" --state open \
 ```
 
 For each open PR:
-1. `gh pr checks <N>` — red CI → check out the branch, fix, test locally,
-   push to `fork`.
-2. `gh pr view <N> --json reviews,comments` — unanswered feedback → apply the
-   requested change OR reply with technical justification, same day.
+1. `gh pr checks <N>` — red CI → check out the branch, fix (use `/fix-ci`
+   when the host provides it), test locally, push to `fork`.
+2. `gh pr view <N> --json reviews,comments` (or `/get-pr-comments` when
+   available) — unanswered feedback → apply the requested change OR reply
+   with technical justification, same day.
 3. Conflict (`mergeable: CONFLICTING`) → rebase on the default branch,
    resolve, `git push --force-with-lease fork <branch>` (fork branches only).
-4. **Auto-close on staleness — with the engagement guard AND the quality
-   exception**: a PR open more than `STALE_CLOSE_DAYS` days may be closed
-   as stale ONLY when ALL THREE hold:
+4. **Auto-close on staleness — DISABLED by default** (`STALE_CLOSE_DAYS=0`):
+   most projects review external PRs in weeks, and closing our own viable
+   PRs early is self-harm. Only a project profile under real queue pressure
+   may enable it (hermes-agent sets 4). Where enabled — with the engagement
+   guard AND the quality exception — a PR open more than `STALE_CLOSE_DAYS`
+   days may be closed as stale ONLY when ALL THREE hold:
    - `reviewDecision` is empty, AND
    - `gh pr view <N> --json reviews -q '.reviews[] | select(.author.login != "'$GH_LOGIN'")'`
      returns nothing (`reviewDecision` only reflects APPROVED /
@@ -226,7 +258,8 @@ For each open PR:
    per PR ever; record `PINGED (YYYY-MM-DD)` in `logs/opened-prs.md`.
 
 **Queue gate:** if ≥ `MAX_OPEN_UNREVIEWED` of our PRs are open without any
-maintainer review, pause new PRs (Phase 5 becomes a no-op) and only babysit
+maintainer review (`NEWCOMER_MAX_OPEN_UNREVIEWED` while we have zero merges
+in this project), pause new PRs (Phase 5 becomes a no-op) and only babysit
 until the queue drains; Phases 1–4 still run to accumulate candidates.
 
 ## Phase 3 — Mechanical audit (once/day)
@@ -238,9 +271,10 @@ gh issue list --repo "$UPSTREAM_REPO" --state open --limit 30 \
   --json number,title,labels,createdAt
 ```
 
-Run any additional audit commands listed in PROFILE.md (project-specific
-gates are better candidate sources than generic scans). The generic script
-degrades to SKIP lines for checks that don't apply to this repo.
+Run the "Audit commands" listed in PROFILE.md — in non-Python repos they are
+the PRIMARY audit (the generic `audit.py` only scans `*.py` and degrades to
+SKIP lines elsewhere); project-specific gates are better candidate sources
+than generic scans in every repo.
 
 ## Phase 3b — Top-4 contributor benchmark (once/day)
 
@@ -318,7 +352,9 @@ to claim it).
 ## Phase 5 — Implement (every run; daily target applies)
 
 Consume the day's backlog, 1–2 candidates per run, stopping at
-`DAILY_PR_TARGET` PRs for the day (healthy default 3–5). For each candidate:
+`DAILY_PR_TARGET` PRs for the day (healthy default 3–5;
+`NEWCOMER_DAILY_PR_CAP` while we have zero merges in this project). For
+each candidate:
 
 1. `git switch -c fix/<slug> "$DEFAULT_BRANCH"`
 2. Implement the **smallest** change that solves it. One logical change/PR.
@@ -354,8 +390,9 @@ Consume the day's backlog, 1–2 candidates per run, stopping at
 - **Always finish by committing and pushing the workspace repo**
   (`projects/SLUG/` + any playbook/profile updates). This is what makes the
   loop resumable from any machine.
-- After a heavy cycle with a durable lesson: process lessons go in
-  "Accumulated lessons" below; project-specific lessons go in PROFILE.md.
+- After a heavy cycle with a durable lesson (use `/simplicio-learn` when the
+  host provides it): process lessons go in "Accumulated lessons" below;
+  project-specific lessons go in PROFILE.md.
 
 ---
 

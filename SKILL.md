@@ -51,9 +51,14 @@ under `projects/SLUG/` and the clone under `work/SLUG/`.
 4. `GH_LOGIN` = `gh api user -q .login`. Never assume a username.
 5. Tunables (`DAILY_PR_TARGET`, `DAILY_PR_HEALTHY`, `MAX_OPEN_UNREVIEWED`,
    `STALE_CLOSE_DAYS`, `STALE_PING_DAYS`, `MAX_SALVAGES_PER_DAY`,
-   `DIFF_LINES_TARGET`) come from `config.env`; a project's PROFILE.md
-   "Tunables" section overrides them; environment variables override
-   everything.
+   `DIFF_LINES_TARGET`, `NEWCOMER_DAILY_PR_CAP`,
+   `NEWCOMER_MAX_OPEN_UNREVIEWED`) come from `config.env`; a project's
+   PROFILE.md "Tunables" section overrides them; environment variables
+   override everything. `STALE_CLOSE_DAYS=0` means auto-close is disabled
+   (the default — enable it per project only under real queue pressure).
+   **Newcomer reputation gate**: in any project where we have zero merged
+   PRs, `NEWCOMER_DAILY_PR_CAP` and `NEWCOMER_MAX_OPEN_UNREVIEWED` replace
+   the normal caps until our first merge there.
 
 ## Bootstrap (idempotent — run every iteration before anything else)
 
@@ -74,13 +79,19 @@ under `projects/SLUG/` and the clone under `work/SLUG/`.
 
 0. **Reconnaissance** (once per project — when `projects/SLUG/PROFILE.md`
    does not exist): study the project and WRITE the profile: contribution
-   rules, build/test/lint commands, PR conventions (commit style, DCO/CLA,
-   template), maintainer priorities, a dated **benchmark snapshot** (merged
-   mix, hot areas, the diff-size envelope externals actually get merged,
-   the exact PR body style that passes review), review culture, forbidden
-   themes, and a concrete contribution strategy. Every later phase reads
-   this profile instead of assuming anything. Full spec: PLAYBOOK.md
-   Phase R.
+   rules, build/test/lint commands **and project-specific audit commands**
+   (the generic `scripts/audit.py` only scans Python — in TS/Rust/Go/C++
+   repos the profile's audit commands ARE the mechanical audit), PR
+   conventions (commit style, DCO/CLA, template), maintainer priorities, a
+   dated **benchmark snapshot** (merged mix, hot areas, the diff-size
+   envelope externals actually get merged, the exact PR body style that
+   passes review), review culture, forbidden themes, and a concrete
+   contribution strategy. Every later phase reads this profile instead of
+   assuming anything. Full spec: PLAYBOOK.md Phase R.
+   **CLA stop**: if the project/org requires a CLA the human has not signed
+   yet, record it in the profile, open ZERO PRs, and ask the user to sign
+   it (one-time, per org) — a PR blocked by the CLA bot burns reputation.
+   DCO (`Signed-off-by`) is ours to handle: commit with `git commit -s`.
 1. **Babysit first** (every run): triage every open PR of ours in this
    project — red CI gets fixed, reviewer feedback gets applied or answered
    technically the same day, conflicts get rebased and force-pushed with
@@ -110,13 +121,41 @@ under `projects/SLUG/` and the clone under `work/SLUG/`.
    workspace repo and push — this is what lets any other computer or LLM
    resume with full memory.
 
+## Host skill integration (use when available; degrade gracefully)
+
+This loop was born alongside the `simplicio-*` skill family. When the host
+agent exposes these skills, drive the corresponding parts of the loop
+through them; when it doesn't, the plain-text fallbacks in this file and
+PLAYBOOK.md are the complete specification — never block on a missing skill.
+
+| Host skill | Role in this loop | Fallback without it |
+|---|---|---|
+| `/simplicio-loop` | Drives the iteration until the **run promise** (below) is true | Execute the phases sequentially once, then stop |
+| `/simplicio-orient` | Token-economy spine: every filesystem/git/process fact via terminal with clamped output | Apply the Token economy rules in PLAYBOOK.md manually |
+| `/simplicio-compress` | Terse logs/summaries; code, paths, URLs byte-for-byte | Write logs tersely by hand |
+| `/simplicio-review` | The adversarial review gate before every push | Subagents/self-refutation per "Adversarial review" below |
+| `/simplicio-learn` | Closes heavy cycles: durable lessons → PLAYBOOK "Accumulated lessons" / PROFILE "Project lessons" | Append the lessons manually before the final commit |
+| `/fix-ci` | Phase 2 babysit: diagnose and fix red CI on our PRs | Inspect `gh pr checks` + logs and fix by hand |
+| `/get-pr-comments` | Phase 2 babysit: fetch/summarize reviewer feedback | `gh pr view <N> --json reviews,comments` with clamped output |
+
+**Run promise** (what `/simplicio-loop` iterates toward; also the definition
+of "done" for a manual run): *open PRs triaged (CI green or being fixed,
+feedback answered) AND (daily planning done, if it wasn't yet) AND
+(candidates implemented until the backlog is empty or the daily target is
+reached) AND logs updated, committed, and pushed.* Never declare the promise
+true when it isn't — fewer PRs with a logged reason satisfies it; a skipped
+gate does not.
+
 ## Adversarial review (before every push)
 
-If the host agent supports subagents, spawn 2 independent reviewers in
-parallel — one on a security/correctness rubric, one on code quality/reuse —
-each prompted to REFUTE the change, and act on confirmed findings. If the
-host has no subagents, perform a written self-refutation pass against both
-rubrics and record it in the day's log. Never skip this gate.
+Preferred: run `/simplicio-review` on the branch (parallel subagents on
+security/correctness, code-quality, and does-it-reproduce rubrics, deduped
+into one verdict). Otherwise, if the host agent supports subagents, spawn 2
+independent reviewers in parallel — one on a security/correctness rubric,
+one on code quality/reuse — each prompted to REFUTE the change, and act on
+confirmed findings. If the host has no subagents, perform a written
+self-refutation pass against both rubrics and record it in the day's log.
+Never skip this gate.
 
 ## Inviolable guardrails
 
@@ -146,8 +185,14 @@ rubrics and record it in the day's log. Never skip this gate.
   log it.
 - If ≥ `MAX_OPEN_UNREVIEWED` of our PRs in this project are open with zero
   maintainer review, pause new PRs and only babysit until the queue drains.
+  In a project where we have zero merges yet, the newcomer caps apply
+  instead (`NEWCOMER_DAILY_PR_CAP`, `NEWCOMER_MAX_OPEN_UNREVIEWED`).
 - Respect the project's policy exclusions (PROFILE.md "Forbidden themes")
   and its contribution prerequisites (CLA, DCO sign-off, issue-first rules).
+  An unsigned required CLA is a hard stop: no PRs until the human signs it.
+- Never close one of our own PRs as stale when `STALE_CLOSE_DAYS=0`
+  (disabled) or when any third-party review/comment exists — see PLAYBOOK
+  Phase 2.4.
 - All code, comments, commit messages, PR titles/bodies, and issue comments
   in ENGLISH. Title: conventional commit with the real subsystem scope,
   issue number in the title (`(#NNNNN)`) when one exists. Body: the
