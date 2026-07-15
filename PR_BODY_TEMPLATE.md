@@ -1,4 +1,4 @@
-<!-- PR body template — oss-contrib-loop.
+<!-- PR body template — simplicio-loop-oss (generic fallback; the upstream's own PR template wins).
      Fill EVERY section in ENGLISH. Keep the upstream template sections
      (reviewers expect them). NEVER fabricate test results — run the
      command, paste the real outcome. -->
