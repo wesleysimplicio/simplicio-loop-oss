@@ -403,6 +403,22 @@ each candidate:
 
 ## Accumulated lessons (process-level; project lessons live in each PROFILE.md)
 
+- (2026-07-15) **Cross-project memory bleed into citations**: a run against
+  `browser-use/browser-use` correctly gathered its own issue numbers
+  (`#5132`, `#5188`, ...) but hyperlinked them to `NousResearch/hermes-agent`
+  — a different, unrelated project this same user also runs a loop against.
+  Root cause: this user's host injects standing cross-session memory that
+  is not scoped per-project; a scheduled run for project A can still carry
+  memory written about project B. Fix: SKILL.md's "Repo-identity
+  discipline" rule (top of file, read first) — every link's owner/repo
+  must come from THIS run's resolved `$UPSTREAM_REPO`, never from recall.
+  Also: a scheduled task's own generated skill name (e.g.
+  `oss-loop-browser-use`) is NOT the same as `simplicio-loop-oss` — if a
+  prompt says "run the simplicio-loop-oss skill" and a Skill-tool lookup by
+  that exact name fails, that is expected on hosts that scope skill
+  discovery per scheduled task; fall back to reading `SKILL.md` directly at
+  its known path rather than treating the failed lookup as a blocker.
+
 - (2026-07) In a high-volume repo most closures are duplicates or policy.
   Hence double dedup (planning + re-check before opening) indexed in
   `logs/opened-prs.md`.

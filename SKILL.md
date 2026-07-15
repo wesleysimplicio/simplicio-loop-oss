@@ -18,6 +18,27 @@ merge rate in every daily log.
 **Read `PLAYBOOK.md` (same directory as this file) before acting. It is the
 source of truth for every phase, gate, and accumulated lesson.**
 
+**Repo-identity discipline (critical — read before writing ANY link or
+citation).** This host may carry standing memory/instructions from other,
+unrelated loops against a *different* upstream repo (a user commonly runs
+several `simplicio-loop-oss`-style loops in parallel, one per project, and
+some hosts inject cross-session memory that isn't scoped to "this run").
+That memory is **not about `$UPSTREAM_REPO` for this invocation** unless it
+explicitly says so. Concretely:
+- Every `#NNN` you cite, every `github.com/...` URL you construct, every
+  "Closes #N" — the owner/repo in that link MUST be the `$UPSTREAM_REPO`
+  resolved for THIS run, never a repo recalled from memory, a prior
+  session, or a different project's loop state.
+- If you notice yourself about to write a link to a repo you did not
+  yourself clone/fork in THIS run's bootstrap step, stop and re-derive the
+  URL from `$UPSTREAM_REPO` instead of trusting recall.
+- This applies to chat-facing summaries too, not just committed files or
+  PR bodies — a wrong-repo link in a summary is still a real defect (it
+  already happened once: a run against `browser-use/browser-use` cited
+  correct browser-use issue numbers but hyperlinked them to
+  `NousResearch/hermes-agent`, apparently pulled from unrelated standing
+  memory about a different project's loop).
+
 ## Invocation — choosing the target project
 
 The skill is invoked with a target, e.g.:
