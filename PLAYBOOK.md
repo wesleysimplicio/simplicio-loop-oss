@@ -94,6 +94,15 @@ contribution priorities as captured in its PROFILE.md.
    Conventional Commits with the real subsystem scope
    (`fix(telegram): ...`), issue number in the title (`(#NNNNN)`) when one
    exists. Branches `fix/...`, `feat/...`. **Everything in ENGLISH.**
+   **No AI co-author trailer.** Commits and PRs this loop produces —
+   whether run interactively or by an automated/scheduled invocation —
+   represent the operator's own contribution under their own GitHub
+   identity (`$GH_LOGIN`), never a collaborative AI-assisted session. Do
+   not append a `Co-Authored-By: Claude` (or any AI-tool) trailer to
+   commit messages or PR bodies, in the target upstream repo OR in this
+   skill's own state-tracking repo (`projects/`, `logs/`, `PROFILE.md`
+   updates). If the host's own default commit convention normally adds
+   one, override it for this loop's commits specifically.
 8. PR body follows the project's merged-PR house style captured in
    PROFILE.md; the generic default (`PR_BODY_TEMPLATE.md`) is
    `## Summary` (symptom + root cause in 2–3 sentences) → `## Changes`

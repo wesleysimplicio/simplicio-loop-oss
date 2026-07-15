@@ -59,11 +59,13 @@ open a forbidden-theme PR, that is a bug in this wiring, not a legitimate
 trade-off — `/simplicio-loop` only ever supplies *how to iterate*, never
 *what is allowed*.
 
-## Invocation — choosing the target project
+## Invocation — choosing the target project (repo or organization)
 
 The skill is invoked with a target, e.g.:
 
 > "Run the simplicio-loop-oss for `python-pillow/Pillow`"
+> "Run the simplicio-loop-oss for the `pallets` organization"
+> "Run the simplicio-loop-oss for `https://github.com/pallets`"
 
 Resolution order for `UPSTREAM_REPO`:
 
@@ -75,6 +77,51 @@ Resolution order for `UPSTREAM_REPO`:
 
 `SLUG` = `owner__repo` (replace `/` with `__`). All per-project state lives
 under `projects/SLUG/` and the clone under `work/SLUG/`.
+
+### Organization-level invocation
+
+When the target is a bare **organization** — a GitHub org name or
+`https://github.com/<org>` URL with no `/repo` suffix, not an existing
+`owner/repo` — this is a request to help the org as a whole, not one
+named repo. Resolve it to `ORG_REPO_COUNT` (default 3) flagship repos and
+run the normal per-repo pipeline against each independently:
+
+1. **Select once per org** (skip if `projects/_org-selections/<org>.md`
+   already exists and is less than 30 days old — don't reselect every
+   run): `gh repo list <org> --limit 100 --json
+   name,stargazerCount,pushedAt,isArchived,isFork,description`. Drop
+   archived repos and forks. Rank by stargazerCount (primary) with a
+   recency sanity check (pushed within the last ~180 days — a
+   high-star/dead repo is a worse target than a moderately-starred active
+   one). Take the top `ORG_REPO_COUNT`.
+2. **Record the selection**: write `projects/_org-selections/<org>.md` —
+   org name, selection date, the ranked candidate list with stars/pushedAt,
+   which `ORG_REPO_COUNT` were picked and why, and which were passed over.
+   This is the audit trail for "why these 3 repos" and the resume point
+   for future runs (add/replace entries; never blindly re-run the `gh
+   repo list` scan every single run).
+3. **Treat each selected repo exactly like an individually-invoked
+   `owner/repo`**: its own `projects/<owner>__<repo>/PROFILE.md` via Phase
+   R, its own backlog, its own scheduling. The org selection only answers
+   "which repos"; everything else in this file and PLAYBOOK.md is
+   unchanged per repo.
+4. **Auto-replace a structurally blocked pick** (`ORG_RESELECT_ON_BLOCK`):
+   if a selected repo's own Phase R finds a hard stop (CLA requirement,
+   an explicit anti-autonomous-agent policy) — the same classes that got
+   `huggingface/transformers`, `modelcontextprotocol/python-sdk`,
+   `home-assistant/core`, `pydantic/pydantic`, and `langchain-ai/langgraph`
+   dropped from active scheduling on 2026-07-15 — do not silently leave
+   the org short of `ORG_REPO_COUNT` active repos. Promote the
+   next-ranked eligible candidate from the org-selection record, run its
+   Phase R, and update `projects/_org-selections/<org>.md` with the swap
+   and why. Keep doing this until `ORG_REPO_COUNT` repos are genuinely
+   active for that org, or the candidate list is exhausted (log that
+   explicitly rather than silently running with fewer).
+5. **Scheduling an org**: since each selected repo becomes its own
+   independent project, schedule each one exactly as a normal per-repo
+   invocation (one scheduled task per repo, per the "Scheduling this
+   loop" section below) — an "org loop" is `ORG_REPO_COUNT` ordinary repo
+   loops that happen to share one selection record, not a new mechanism.
 
 ## Workspace resolution (never hardcode paths)
 
@@ -346,6 +393,10 @@ Never skip this gate.
 
 - Never commit or push to the upstream clone's default branch. Push only to
   the `fork` remote.
+- **No AI co-author trailer** on any commit or PR this loop produces
+  (upstream repo or this skill's own `projects/`/`logs/` state) — it is
+  the operator's own contribution under `$GH_LOGIN`, interactive or
+  scheduled, never a collaborative-session artifact.
 - DUPLICATES ARE FORBIDDEN: dedup at planning time, re-dedup immediately
   before opening each PR (backlogs go stale in hours), and always check
   `projects/SLUG/logs/opened-prs.md` so we never duplicate ourselves.
