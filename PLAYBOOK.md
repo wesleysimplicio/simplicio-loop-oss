@@ -232,7 +232,15 @@ gh pr list --repo "$UPSTREAM_REPO" --author "@me" --state open \
 
 For each open PR:
 1. `gh pr checks <N>` — red CI → check out the branch, fix (use `/fix-ci`
-   when the host provides it), test locally, push to `fork`.
+   when the host provides it), test locally, push to `fork`. **When
+   `/simplicio-loop` is driving this run** (SKILL.md's full-flow section):
+   arm a `mode: converge` scratchpad scoped to this one PR (`"CI for PR #N
+   is green"` as the promise) — a single hard task, retried with the
+   journal + stall detector's guidance until green or STALLED. STALLED on
+   a CI fix means stop retrying blindly and either escalate in the day's
+   log (candidate for a human look) or leave a technical comment on the
+   PR explaining the blocker, rather than burning iterations on the same
+   dead end.
 2. `gh pr view <N> --json reviews,comments` (or `/get-pr-comments` when
    available) — unanswered feedback → apply the requested change OR reply
    with technical justification, same day.
@@ -364,28 +372,37 @@ Consume the day's backlog, 1–2 candidates per run, stopping at
 each candidate:
 
 1. `git switch -c fix/<slug> "$DEFAULT_BRANCH"`
-2. Implement the **smallest** change that solves it. One logical change/PR.
-   Target ≤ `DIFF_LINES_TARGET` changed lines — above that, rethink the
-   scope (split, or drop non-essential parts).
-   - **When `/simplicio-loop` is driving this run** (SKILL.md's "Driving
-     one iteration with /simplicio-loop"): per its normative contract, the
-     model DECIDES the change but never hand-edits — delegate to the bound
-     operator instead of the plain Edit/Write tools:
-     `simplicio-dev-cli task "<the decided, AC-scoped change>" --target
-     <file> --json` (run from `$CLONE`). It applies the diff, runs tests,
-     and self-corrects up to 3×; its passing verification IS this turn's
-     in-turn evidence toward the completion_promise. This is scoped to the
-     operate step only — the rest of `/simplicio-loop`'s heavier apparatus
-     (watcher-gate, task anchor, impact/flow audits, hierarchical planner)
-     is out of scope here; a single-hard-task tool for a whole day's queue
-     of small candidates is a mismatch we haven't tried to force.
-   - **Otherwise** (host doesn't provide `/simplicio-loop`, or
-     `simplicio-dev-cli` isn't on PATH): implement directly with the normal
-     Edit/Write tools. Same rules apply either way — smallest change,
-     mandatory test, no fabrication.
+2. **When `/simplicio-loop` is driving this run** (SKILL.md's "Driving one
+   iteration with /simplicio-loop" — `mode: drain` scratchpad, this
+   candidate is one queue item): before deciding anything, triage —
+   `simplicio-mapper handoff "$CLONE" --for-llm toon` for context,
+   `loop_journal.py resume` for prior attempts on this candidate,
+   `task_anchor.py check --goal "<candidate's acceptance criterion>"
+   --exit-code` (DRIFT → re-derive the AC from the backlog entry, don't
+   wander). Then the model DECIDES the smallest AC-scoped change (one
+   logical change/PR, target ≤ `DIFF_LINES_TARGET` lines) and
+   `simplicio-dev-cli task "<the decided change>" --target <file> --json`
+   APPLIES it — never hand-edit with Edit/Write while this is engaged. For
+   a change touching shared/public files, `impact_audit.py audit "$CLONE"
+   --file <seed> --json`; for a mixed frontend/backend change,
+   `flow_audit.py audit "$CLONE" --fail-on high --json`.
+   - **Otherwise** (host doesn't provide `/simplicio-loop`, or its bound
+     operators aren't on PATH): implement directly with the normal
+     Edit/Write tools — the smallest change that solves it, one logical
+     change/PR, target ≤ `DIFF_LINES_TARGET` lines. Same rules either way.
 3. Fail-before/pass-after test using the PROFILE.md test commands (or the
    operator's own test run, when it drove the change). Verify fail-before
-   by stashing the source fix and re-running.
+   by stashing the source fix and re-running. **When `/simplicio-loop` is
+   driving**: after the test passes, `watcher_verify.py verify` must
+   independently confirm `{"match": true, "status": "MEASURED"}` before
+   this candidate counts as done — a missing/mismatched watcher state
+   blocks it exactly like a failing test, not a formality to skip. Then
+   `loop_journal.py record --iteration N --action "<change>" --hypothesis
+   "<why>" --gate pass|fail --gate-output <test.log>` and
+   `loop_journal.py stall --k 3 --exit-code`: STALLED means abandon this
+   candidate (log the dead end, discard the branch) and move to the next
+   one in the backlog — never retry the same failing approach past 3
+   attempts, and never let one stuck candidate block the rest of the day.
 4. Run the PROFILE.md lint/gate commands on the touched files.
 5. Adversarial review (SKILL.md); fix real findings. A reviewer pointing at a
    better existing in-repo mechanism beats an ad-hoc patch — prefer it.
@@ -421,6 +438,26 @@ each candidate:
 ---
 
 ## Accumulated lessons (process-level; project lessons live in each PROFILE.md)
+
+- (2026-07-15) **Full /simplicio-loop flow, not just the promise/scratchpad
+  shell**: the first wiring only used `/simplicio-loop` for its
+  scratchpad+promise mechanism and, later, delegated the operate step to
+  `simplicio-dev-cli`. On explicit request, expanded to the FULL flow as
+  the delivery-quality spine: `mode: drain` for backlog consumption (the
+  actual queue-draining case it's built for) vs `mode: converge` per stuck
+  PR in babysit; `simplicio-mapper` survey feeding triage instead of ad-hoc
+  reads; `task_anchor.py` drift-check + `impact_audit.py`/`flow_audit.py`
+  before deciding a change; `watcher_verify.py` independent re-confirmation
+  before any candidate counts as done; `loop_journal.py record`/`stall` so
+  a dead-end candidate gets abandoned (not retried past K) instead of
+  burning the run's iteration budget; `MEASURED|`/`UNVERIFIED|` tagging
+  extended to the human-facing run summary, not just internal state (the
+  same class of bug as the repo-identity-bleed lesson below — an
+  unverified claim presented as fact). Deliberately still unused: the
+  hierarchical planner and cross-agent wiki, built for a single
+  long-running hard task handed across agent vendors, not this loop's
+  actual shape (a day's queue of small, independent, externally-rescheduled
+  candidates).
 
 - (2026-07-15) **Cross-project memory bleed into citations**: a run against
   `browser-use/browser-use` correctly gathered its own issue numbers

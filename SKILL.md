@@ -198,7 +198,7 @@ reached) AND logs updated, committed, and pushed.* Never declare the promise
 true when it isn't — fewer PRs with a logged reason satisfies it; a skipped
 gate does not.
 
-## Driving one iteration with /simplicio-loop (inner convergence loop)
+## Driving one iteration with /simplicio-loop (full flow — the quality spine)
 
 This skill's OUTER repetition — firing every N minutes/hours — comes from
 whatever scheduler invoked it: a host `/loop <interval>`, an OS/cloud cron
@@ -206,60 +206,101 @@ job, or a scheduled task. That outer cadence is not this skill's concern;
 it just needs to behave correctly on each invocation, whatever fired it.
 
 WITHIN one outer invocation, when the host provides the `simplicio-loop`
-skill (<https://github.com/wesleysimplicio/simplicio-loop>), drive
-convergence toward the run promise through it instead of executing phases
-0–6 exactly once and stopping:
+skill (<https://github.com/wesleysimplicio/simplicio-loop>) and its
+preflight passes, run this loop's babysit + implement work **through
+`/simplicio-loop`'s full mechanism**, not just its promise/scratchpad
+shell — every stage below is a real quality gate, not decoration, and
+skipping one defeats the point of wiring it in at all:
 
-1. Write `.orchestrator/loop/scratchpad.md` (under `$CLONE` once it exists,
-   else `$WORKSPACE`) per that skill's state-file contract:
-   ```yaml
-   ---
-   iteration: 1
-   max_iterations: 6          # small finite cap — THIS run converges; the
-                              # outer scheduler fires the next run later
-   completion_promise: "Open PRs against $UPSTREAM_REPO are triaged (CI
-     green or being fixed, reviewer feedback answered) AND (today's
-     planning cycle is done, if it wasn't already) AND (backlog candidates
-     are implemented until the backlog is empty or today's PR target is
-     reached) AND today's logs are updated, committed, and pushed."
-   evidence_required: true
-   mode: converge
-   started_at: "<ISO-8601>"
-   ---
-   <this run's goal: babysit $UPSTREAM_REPO's open PRs, run daily planning
-   if not already done today, implement backlog candidates within the
-   daily cap, then commit and push projects/$SLUG/ state.>
-   ```
-2. Let `/simplicio-loop` re-feed that goal each inner turn (babysit →
-   planning-if-due → implement → persist state) until the promise is
-   verified with in-turn evidence, or `max_iterations` fires — then stop.
-   The outer scheduler is what fires the *next* run, later. **On the
-   implement turns**, honor `/simplicio-loop`'s "model decides, operator
-   applies" contract per PLAYBOOK.md Phase 5 step 2: delegate the change to
-   `simplicio-dev-cli task "<change>" --target <file> --json` instead of
-   hand-editing with Edit/Write. This delegation is scoped to that one
-   operate step — the rest of `/simplicio-loop`'s apparatus (watcher-gate,
-   task anchor, impact/flow audits, hierarchical planner) is intentionally
-   out of scope for this loop.
-3. `/simplicio-loop`'s own preflight requires its bound operators
-   (`simplicio-mapper`, `simplicio-dev-cli` — see its SKILL.md) on PATH. If
-   either is missing, that host simply doesn't provide `/simplicio-loop`
-   here — do not block this loop over it. Fall back to executing phases
-   0–6 once, sequentially, then stop (the plain fallback already specified
-   throughout this file and PLAYBOOK.md). Same rule as `simplicio-runtime`
-   above: an accelerant, never a hard dependency of the OSS contribution
-   loop itself.
-4. Close with `/simplicio-learn` when the host provides it — folds durable
+1. **Preflight** (once per outer invocation): confirm `simplicio-mapper`
+   and `simplicio-dev-cli` are on PATH (`/simplicio-loop`'s own
+   requirement). Missing either means this host doesn't provide
+   `/simplicio-loop` here — do not block; fall back to phases 0–6 once,
+   sequentially, per the rest of this file and PLAYBOOK.md. Never a hard
+   dependency of the OSS contribution loop itself.
+2. **Arm two scratchpads**, matching `/simplicio-loop`'s two termination
+   modes to this loop's two kinds of work:
+   - **`mode: drain`** for Phase 5 (implement the day's backlog) — this
+     IS the queue-draining case `/simplicio-loop` describes: claim next
+     backlog item → implement → deliver (open the PR) → re-query source.
+     Terminates when `logs/backlog-YYYY-MM-DD.md` returns empty for 2
+     consecutive rounds AND today's PR target/newcomer cap isn't the
+     limiting factor.
+   - **`mode: converge`** for Phase 2 (babysit one specific open PR with
+     red CI or unanswered feedback) — a single hard task per PR: keep
+     retrying with the stall detector's guidance until that PR's CI is
+     green / feedback is answered, or the stall detector says STALLED
+     (see step 6).
+   - `completion_promise` (drain scratchpad): `"Open PRs against
+     $UPSTREAM_REPO are triaged AND today's backlog
+     (logs/backlog-YYYY-MM-DD.md) is empty or today's PR target is
+     reached AND today's logs are committed and pushed."`
+   - `max_iterations`: bounded per outer invocation (default 6; raise in
+     PROFILE.md "Tunables" for a project with a large backlog and a
+     healthy target above the newcomer cap — same place `DAILY_PR_TARGET`
+     / `DAILY_PR_HEALTHY` are overridden).
+3. **Survey before triage**: `simplicio-mapper scan "$CLONE" --json` →
+   `simplicio-mapper handoff "$CLONE" --for-llm toon` as the context pack
+   for each candidate/PR, instead of an ad-hoc re-read of the tree.
+4. **Triage each turn before deciding**: `loop_journal.py resume` (what's
+   already been tried on this candidate/PR — avoid repeating a dead end)
+   and `task_anchor.py check --goal "<candidate's acceptance criterion>"
+   --exit-code` (a DRIFT verdict means re-derive the AC from the
+   candidate's backlog entry, never wander into an unrelated fix). For a
+   change touching shared/public files, `impact_audit.py audit "$CLONE"
+   --file <seed> --cover <known-file> --json`; for a mixed
+   frontend/backend/service change, `flow_audit.py audit "$CLONE"
+   --fail-on high --json`.
+5. **Operate** (PLAYBOOK.md Phase 5 step 2): the model decides the
+   AC-scoped change; `simplicio-dev-cli task "<change>" --target <file>
+   --json` applies it, runs tests, and self-corrects up to 3× — never
+   hand-edit with Edit/Write while this mechanism is engaged.
+6. **Watcher-gate + record, before moving on**: `watcher_verify.py verify`
+   must independently confirm `{"match": true, "status": "MEASURED"}`
+   before this candidate counts as done — a missing/mismatched watcher
+   state is `UNVERIFIED` and blocks it, same as a failing test. Then
+   `loop_journal.py record --iteration N --action "<change>" --hypothesis
+   "<why>" --gate pass|fail --gate-output <test.log>`, and
+   `loop_journal.py stall --k 3 --exit-code` before continuing: STALLED on
+   a candidate means abandon it (log the dead end in the day's log and
+   the backlog entry, discard the branch) and move to the next candidate
+   — never re-try the same failing approach past K attempts, and never
+   let one stuck candidate block the rest of the day's backlog.
+7. **Claims-gate tagging**: every line of this run's journal, triage, and
+   chat-facing summary is prefixed `MEASURED|` (backed by an in-turn
+   passing gate, a `file:line` receipt, or a test log — e.g. a candidate's
+   test result, a watcher-gate pass, a merge-rate figure computed from
+   `gh pr list`) or `UNVERIFIED|` (an inference or best-effort read with no
+   mechanical proof this turn — e.g. "this issue looks reproducible" before
+   actually reproducing it). This applies to the human-facing run summary
+   too, not just internal state — a bare unlabelled claim there is exactly
+   the class of bug the repo-identity-discipline lesson above already
+   caught once (an unverified recollection presented as fact).
+8. **Exit** only via the exact `<promise>EXACT TEXT</promise>` sentinel,
+   gated by BOTH `evidence_required` (an in-turn passing gate) AND the
+   watcher-gate (`match: true`) — never a self-reported "done". If neither
+   scratchpad's promise is true when `max_iterations` fires, that is a
+   correct, expected outcome (log why), not a failure to force.
+9. Close with `/simplicio-learn` when the host provides it — folds durable
    lessons into PLAYBOOK.md "Accumulated lessons" / PROFILE.md "Project
    lessons". Fallback: append them manually before the final commit (as
    PLAYBOOK.md Phase 6 already specifies).
 
-`max_iterations: 6` above is a starting default, not a hard rule — a
-project with a large, well-populated backlog and a healthy daily PR target
-well above the newcomer cap may warrant a higher cap so one outer
-invocation can actually clear more of the day's work; tune it in that
-project's PROFILE.md "Tunables" section, the same place `DAILY_PR_TARGET`
-and `DAILY_PR_HEALTHY` are overridden per project.
+**Deliberately still out of scope**: the hierarchical planner
+(`explore → debug → harden → refactor → implement → escalate` phasing) and
+the cross-agent wiki (`.orchestrator/wiki/`) are built for a single
+long-running hard task handed across agent vendors — this loop's unit of
+work is a day's queue of small, independent PR candidates re-armed by an
+external scheduler, so those two stay unused here. Everything else in
+`/simplicio-loop`'s normative contract (steps 1–8 above) is now load-bearing,
+not optional decoration — the whole reason to wire it in was so the
+delivery quality gate is real, not cosmetic.
+
+**No bound operators, no `/simplicio-loop` here**: fall back to the plain
+phases 0–6 exactly as PLAYBOOK.md specifies them, with the same mandatory
+test / no-fabrication / dedup rules — those never depend on `/simplicio-loop`
+being present. `/simplicio-loop` makes the quality bar stronger when it's
+available; its absence never makes the quality bar disappear.
 
 ## Adversarial review (before every push)
 
