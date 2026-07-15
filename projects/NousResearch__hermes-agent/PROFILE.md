@@ -157,3 +157,39 @@ Newcomer gate does not apply: we have 3 merged PRs in this project.
 - (2026-07-15) Review latency here is days-to-weeks for external PRs; a
   4-day staleness close destroyed viable quality PRs once. Quality PRs
   (bug fix + issue + green CI) hold for the 14-day ping window instead.
+- (2026-07-15) **`hermes-sweeper` reviews are `teknium1`'s automated maintainer
+  tooling** — they post as `teknium1` in COMMENTED state with
+  `<!-- hermes-sweeper:review-verdict=keep_open salvageability=high -->` markers
+  and cite exact `file:line` + a cross-referenced PR whose predicate to copy.
+  Treat them as authoritative maintainer feedback: they are precise and
+  actionable (e.g. on #59189 correctly caught that the CORS OPTIONS short-circuit
+  must also require a nonempty `Origin`, because Starlette `CORSMiddleware` passes
+  Origin-less requests through without a preflight response — a no-Origin
+  `OPTIONS`+`Access-Control-Request-Method` was bypassing the token gate). Turn
+  them around same-day with a fail-before/pass-after test.
+- (2026-07-15) Telegram `/topic` first-activation: `_handle_topic_command`
+  (`gateway/slash_commands.py`) must gate `_ensure_telegram_system_topic` on
+  `is_telegram_topic_mode_enabled` (read BEFORE enabling = the real
+  "first activation" signal), NOT on `source.thread_id` — Telegram
+  auto-creates a topic for the `/topic` message itself, so thread_id is
+  present even on first activation from the All Messages view (#65202 →
+  PR #65216). `_ensure_telegram_system_topic` (`gateway/run.py`) is NOT
+  idempotent (always creates a fresh "System" forum topic), so it must fire
+  only once per activation. Test harness: `tests/gateway/test_telegram_topic_mode.py`
+  `_make_runner`/`_make_event(text, thread_id=...)` with a real `SessionDB` +
+  mocked adapter — mock `_ensure_telegram_system_topic`/`_get_telegram_topic_capabilities`
+  and assert `assert_awaited_once`.
+- (2026-07-15) kanban unblock/promote cascade (#65195) does NOT reproduce on
+  current main: `unblock_task` only flips the parent status, `_cmd_unblock`
+  calls nothing else, and `recompute_ready` promotes a child only when ALL
+  parents are `done`/`archived`. Already fixed post-v0.18.x. Reproduce-gate
+  → posted evidence comment, no PR.
+- (2026-07-15) `simplicio-runtime` is installed and healthy here
+  (`simplicio doctor --json`); precedent memory (`simplicio precedent`)
+  was never initialized for this repo before this run — ran `simplicio
+  precedent init --repo .` once. `simplicio-mapper ask <path> term <name>`
+  triggers a cold deep-index pass with no interim output; for a single
+  fast lookup, plain `grep`/`Read` resolved a candidate (session_search
+  profile-forwarding bug, see #65133 iteration) faster than waiting on the
+  mapper. Prefer `simplicio-mapper scan --sync` once up front (or accept
+  the deep-index latency) rather than repeatedly cold-calling `ask`.

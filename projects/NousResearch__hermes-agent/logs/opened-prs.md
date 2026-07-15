@@ -10,14 +10,17 @@ Check this file in Phase 4 (dedup) and before opening any PR.
 | 2026-07-15 | #64689 | fix(desktop): accumulate MoA reference reasoning blocks instead of replacing | desktop, moa, reasoning, appendReasoningDelta, reference blocks | OPEN |
 | 2026-07-15 | #64701 | fix(tui): keep MoA reference blocks visible when the thinking section is hidden | tui, moa, thinking, isMoaReference, visibility | OPEN |
 | 2026-07-15 | #64731 | fix(state): inherit cwd/git_repo_root on parent_session_id children | hermes_state, session, cwd, git_repo_root, compression, sidebar | OPEN |
+| 2026-07-15 | #65216 | fix(telegram): create System topic on auto-threaded first /topic (#65202) | telegram, /topic, System topic, thread_id, first-activation, _handle_topic_command | OPEN |
+| 2026-07-15 | #65154 | fix(agent): classify jiter SSE parse failures as retryable (#65147) | jiter, ValueError, SSE, is_local_validation_error, retry classifier | OPEN |
+| 2026-07-15 | #65159 | fix(agent): send session-scope headers to custom Codex-compatible providers (#65094) | codex_responses, is_codex_backend, session headers, custom provider | OPEN |
 | pré-loop | #59199 | fix(tools): recognize WhatsApp LID format in send_message target parsing | whatsapp, LID, send_message | CLOSED |
 | pré-loop | #59198 | fix(cli): print '✓ Update complete!' on the Already up to date path | cli, update, mensagem | CLOSED |
 | pré-loop | #59197 | fix(acp): skip detect_provider_for_model when input had explicit provider prefix | acp, provider prefix | OPEN (reopened again 2026-07-15, wrongly auto-closed a 2nd time 2026-07-15T06:34Z despite COMMENTED maintainer review — see PLAYBOOK lesson) |
 | pré-loop | #59196 | fix(tts): convert Piper raw WAV to Opus before sending as .ogg | tts, piper, opus, ogg | CLOSED |
 | pré-loop | #59195 | fix(gateway): inline auto_continue_freshness_window to remove lazy import coupling | gateway, lazy import | CLOSED |
-| pré-loop | #59194 | fix(slack): guard _resolve_thread_ts against async/cron deliveries using stale thread context | slack, thread_ts, cron | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59194 | fix(slack): guard _resolve_thread_ts against async/cron deliveries using stale thread context | slack, thread_ts, cron | OPEN — reworked per AmirF194 (fix moved to cron/scheduler.py _resolve_single_delivery_target: home root wins over origin thread; regression test added); PT reply comment replaced with English 2026-07-15, CI green |
 | pré-loop | #59191 | fix(config): preserve model.context_length on same-model re-pick | config, context_length | OPEN (reopened again 2026-07-15, wrongly auto-closed a 2nd time 2026-07-15T06:34Z despite COMMENTED maintainer review — see PLAYBOOK lesson) |
-| pré-loop | #59189 | fix(dashboard): short-circuit OPTIONS preflight in auth middleware for CORS | dashboard, CORS, preflight | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59189 | fix(dashboard): short-circuit OPTIONS preflight in auth middleware for CORS | dashboard, CORS, preflight, Origin | OPEN — AmirF194 addressed 2026-07-15; then teknium1 (hermes-sweeper) COMMENTED 2026-07-15 flagged no-Origin OPTIONS+ACRM bypass. ADDRESSED same day: guard now also requires nonempty Origin + regression test (no-Origin stays 401); 4/4 pass, ruff clean; pushed additively (ff); English reply posted |
 | pré-loop | #59187 | fix(ui): rename Anthropic API Key to Anthropic Account for OAuth PKCE entry | ui, anthropic, oauth | CLOSED |
 | pré-loop | #59176 | fix(docs): correct Discord permission integers for text-only and voice presets | docs, discord, permissions | CLOSED |
 | pré-loop | #59155 | fix: remove remaining stale noqa comments across repo | noqa, ruff, lint | CLOSED (stale >4d, 2026-07-14) |
@@ -47,3 +50,5 @@ Check this file in Phase 4 (dedup) and before opening any PR.
 | pré-loop | #58909 | chore: remove 25 unused imports across 18 Python files | unused imports | CLOSED (stale >4d, 2026-07-14) |
 | pré-loop | #58903 | fix(docs): replace broken NeurIPS style files URL with conference homepage | docs, neurips, url | CLOSED (stale >4d, 2026-07-14) |
 | pré-loop | #58900 | fix: idiomatic Python improvements in tui_gateway/, agent/, and tools/ | idiomatic python, tui_gateway | CLOSED (stale >4d, 2026-07-14) |
+| 2026-07-15 | SKIPPED | #35520 dashboard <1024px layout/scroll | dashboard, mobile, sidebar, dvh, viewport | SKIPPED — issue author abduznik commented "I can send my solution to this, fixed it locally for myself" (self-claim); also overlaps open PRs #21065 (sidebar overlap at lg+) and #32359 (hide desktop sidebar on mobile) per issue comment from alt-glitch. No PR opened. |
+| 2026-07-15 | SKIPPED | #29347 kanban DELETE /tasks/:id missing board param | kanban, DELETE, tasks, board param, 404 | SKIPPED — PR #29353 "fix(kanban-dashboard): thread board into DELETE /tasks/:id callbacks (#29347)" already open (xxxigm), unmerged, exact fix for this issue. No duplicate opened. |
