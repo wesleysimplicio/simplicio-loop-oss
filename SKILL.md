@@ -233,7 +233,14 @@ convergence toward the run promise through it instead of executing phases
 2. Let `/simplicio-loop` re-feed that goal each inner turn (babysit →
    planning-if-due → implement → persist state) until the promise is
    verified with in-turn evidence, or `max_iterations` fires — then stop.
-   The outer scheduler is what fires the *next* run, later.
+   The outer scheduler is what fires the *next* run, later. **On the
+   implement turns**, honor `/simplicio-loop`'s "model decides, operator
+   applies" contract per PLAYBOOK.md Phase 5 step 2: delegate the change to
+   `simplicio-dev-cli task "<change>" --target <file> --json` instead of
+   hand-editing with Edit/Write. This delegation is scoped to that one
+   operate step — the rest of `/simplicio-loop`'s apparatus (watcher-gate,
+   task anchor, impact/flow audits, hierarchical planner) is intentionally
+   out of scope for this loop.
 3. `/simplicio-loop`'s own preflight requires its bound operators
    (`simplicio-mapper`, `simplicio-dev-cli` — see its SKILL.md) on PATH. If
    either is missing, that host simply doesn't provide `/simplicio-loop`

@@ -367,8 +367,25 @@ each candidate:
 2. Implement the **smallest** change that solves it. One logical change/PR.
    Target ≤ `DIFF_LINES_TARGET` changed lines — above that, rethink the
    scope (split, or drop non-essential parts).
-3. Fail-before/pass-after test using the PROFILE.md test commands. Verify
-   fail-before by stashing the source fix and re-running.
+   - **When `/simplicio-loop` is driving this run** (SKILL.md's "Driving
+     one iteration with /simplicio-loop"): per its normative contract, the
+     model DECIDES the change but never hand-edits — delegate to the bound
+     operator instead of the plain Edit/Write tools:
+     `simplicio-dev-cli task "<the decided, AC-scoped change>" --target
+     <file> --json` (run from `$CLONE`). It applies the diff, runs tests,
+     and self-corrects up to 3×; its passing verification IS this turn's
+     in-turn evidence toward the completion_promise. This is scoped to the
+     operate step only — the rest of `/simplicio-loop`'s heavier apparatus
+     (watcher-gate, task anchor, impact/flow audits, hierarchical planner)
+     is out of scope here; a single-hard-task tool for a whole day's queue
+     of small candidates is a mismatch we haven't tried to force.
+   - **Otherwise** (host doesn't provide `/simplicio-loop`, or
+     `simplicio-dev-cli` isn't on PATH): implement directly with the normal
+     Edit/Write tools. Same rules apply either way — smallest change,
+     mandatory test, no fabrication.
+3. Fail-before/pass-after test using the PROFILE.md test commands (or the
+   operator's own test run, when it drove the change). Verify fail-before
+   by stashing the source fix and re-running.
 4. Run the PROFILE.md lint/gate commands on the touched files.
 5. Adversarial review (SKILL.md); fix real findings. A reviewer pointing at a
    better existing in-repo mechanism beats an ad-hoc patch — prefer it.
