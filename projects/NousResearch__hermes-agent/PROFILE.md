@@ -45,9 +45,33 @@ specifics, this file wins.
 ## PR conventions
 
 - English everything. Branch `fix/<slug>`. One logical change per PR.
-- Body: upstream template + mermaid of affected flow + step-by-step +
-  acceptance criteria + tests-performed table with REAL pasted output +
-  honest "out of scope" notes. This format has earned substantive reviews.
+- Title: conventional commit with the real subsystem scope
+  (`fix(telegram): ...`), issue number in the title (`(#NNNNN)`) when one
+  exists.
+- Body (house style of merged external PRs — see Benchmark snapshot):
+  `## Summary` (symptom + cause, 2–3 sentences) → `## Changes` (bullet per
+  file with the why) → `## Validation` (table command → REAL result) →
+  `Closes #NNN`. Honest "out of scope" notes welcome. Mermaid only when
+  the flow is genuinely hard to explain in text — none of the last 30
+  merged PRs uses one.
+
+## Benchmark snapshot (2026-07-15 — Phase 3b refreshes this block when data diverges)
+
+Extracted from the last ~30 merged PRs and 30 days of history:
+
+- **Merged mix:** ~70% `fix`, ~25% `feat`. Hot areas: telegram
+  (polling/reconnect/getUpdates), reasoning_effort/config resolution, mcp
+  (schemas/content blocks), moa, cron/scheduler (double-fire), dashboard
+  auth, desktop UI, gateway/state/session.
+- **Externals only merge SMALL, FOCUSED PRs:** 26–216 added lines, minimal
+  deletion, one problem per PR. Target ≤ ~250 changed lines.
+- **Salvage is accepted** (4 of the last 30 merges): reviving valuable
+  abandoned/closed PRs via cherry-pick PRESERVING AUTHORSHIP, title with
+  `(salvage #NNN)`, credit to the original author in the body.
+- **Our historical record here:** 3 merges (#28577, #24547, #22534 — all
+  small bug fixes with a referenced issue); ~30 closures, almost all
+  mechanical churn or duplicates. The path that works: real bug + issue +
+  small diff + house-style body.
 
 ## Maintainer priorities & review culture
 
@@ -72,19 +96,27 @@ specifics, this file wins.
 ## Forbidden / low-value themes
 
 - **Policy (closed on sight)**: new memory providers under
-  `plugins/memory/`; third-party product integrations under `plugins/`.
-- **Low value (learned)**: mechanical `noqa`/lint cleanup PRs — closed en
-  masse without review; avoid.
+  `plugins/memory/`; third-party product integrations under `plugins/`
+  (exception: a salvage of a provider PR already started by a third party,
+  authorship preserved, when it fits the accepted salvage pattern).
+- **Proven rejection (2+ unmerged closures)**: mass mechanical cleanup
+  (batch `noqa`/typos/formatting/lint), series of PRs on the same trivial
+  theme, PRs without an issue or a real user-visible symptom.
 - **Design debates**: issues proposing architecture changes (e.g. hook
   semantics, multiplex token resolution) — comment constructively, don't
   PR speculatively.
 
 ## Strategy
 
+- Candidate ranking (Phase 4): (a) bug with an open issue AND maintainer
+  engagement > (b) bug in a hot area from the Benchmark snapshot >
+  (c) salvage > (d) small fix with a clear reproduction. Reject candidates
+  without an issue or a real user symptom.
 - Best candidate source: fresh, well-written bug issues with exact root
   cause — but they get claimed in MINUTES; re-dedup immediately before
   opening is non-negotiable. Second source: bugs found while reviewing our
-  own PRs adversarially (sibling code with the same defect class).
+  own PRs adversarially (sibling code with the same defect class). Third:
+  salvages (accepted here — see Benchmark snapshot; max 1/day).
 - The mechanical audit rarely yields high-value hits here (repo is clean on
   footguns/deps); treat it as a cheap daily sweep, not the main source.
 - Windows-reproducible bugs are a comparative advantage (this loop runs on
@@ -94,8 +126,10 @@ specifics, this file wins.
 
 ## Tunables
 
-Defaults from `config.env` apply (`DAILY_PR_TARGET=10`,
-`MAX_OPEN_UNREVIEWED=25`, `STALE_CLOSE_DAYS=4`).
+Defaults from `config.env` apply (`DAILY_PR_TARGET=10`, `DAILY_PR_HEALTHY=5`
+— healthy default here is 3–5 given review latency, `MAX_OPEN_UNREVIEWED=25`,
+`STALE_CLOSE_DAYS=4`, `STALE_PING_DAYS=14`, `MAX_SALVAGES_PER_DAY=1`,
+`DIFF_LINES_TARGET=250`).
 
 ## Project lessons (append-only)
 
