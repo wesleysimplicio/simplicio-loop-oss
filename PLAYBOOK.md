@@ -495,6 +495,22 @@ each candidate:
 
 ## Accumulated lessons (process-level; project lessons live in each PROFILE.md)
 
+- (2026-07-15) **Stale-close (Phase 2.4) re-closed PRs with an existing
+  maintainer review, twice, on the same two PRs**: hermes-agent#59197 and
+  #59191 each carry a COMMENTED maintainer review, were wrongly
+  auto-closed by our own stale-close logic, reopened once on 2026-07-14,
+  then wrongly auto-closed AGAIN at 2026-07-15T06:34Z by whatever ran
+  Phase 2.4 earlier that day — reopened a second time in this run
+  (verified via `gh api .../issues/<n>/timeline` showing actor
+  `wesleysimplicio` on both the close and the reopen events). One manual
+  reopen did not fix the underlying bug because the guardrail check
+  ("never close when any third-party review/comment exists") was
+  evidently not actually gating the close action. Any implementation of
+  Phase 2.4 MUST check `gh pr view <n> --json reviews,comments` for a
+  non-empty result and skip the close entirely if so — a comment in
+  passing is not enough; verify this with a real query before every
+  stale-close action, not just once when the PR was first opened.
+
 - (2026-07-15) **First-mover strategy on fresh issues (Phase 2b)**: added by
   explicit user request — the once-daily planning cycle was too slow to
   catch a strong issue before another contributor claimed it (already

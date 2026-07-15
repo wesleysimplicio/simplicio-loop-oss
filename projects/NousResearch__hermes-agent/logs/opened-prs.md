@@ -12,11 +12,11 @@ Check this file in Phase 4 (dedup) and before opening any PR.
 | 2026-07-15 | #64731 | fix(state): inherit cwd/git_repo_root on parent_session_id children | hermes_state, session, cwd, git_repo_root, compression, sidebar | OPEN |
 | pré-loop | #59199 | fix(tools): recognize WhatsApp LID format in send_message target parsing | whatsapp, LID, send_message | CLOSED |
 | pré-loop | #59198 | fix(cli): print '✓ Update complete!' on the Already up to date path | cli, update, mensagem | CLOSED |
-| pré-loop | #59197 | fix(acp): skip detect_provider_for_model when input had explicit provider prefix | acp, provider prefix | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59197 | fix(acp): skip detect_provider_for_model when input had explicit provider prefix | acp, provider prefix | OPEN (reopened again 2026-07-15, wrongly auto-closed a 2nd time 2026-07-15T06:34Z despite COMMENTED maintainer review — see PLAYBOOK lesson) |
 | pré-loop | #59196 | fix(tts): convert Piper raw WAV to Opus before sending as .ogg | tts, piper, opus, ogg | CLOSED |
 | pré-loop | #59195 | fix(gateway): inline auto_continue_freshness_window to remove lazy import coupling | gateway, lazy import | CLOSED |
 | pré-loop | #59194 | fix(slack): guard _resolve_thread_ts against async/cron deliveries using stale thread context | slack, thread_ts, cron | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
-| pré-loop | #59191 | fix(config): preserve model.context_length on same-model re-pick | config, context_length | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59191 | fix(config): preserve model.context_length on same-model re-pick | config, context_length | OPEN (reopened again 2026-07-15, wrongly auto-closed a 2nd time 2026-07-15T06:34Z despite COMMENTED maintainer review — see PLAYBOOK lesson) |
 | pré-loop | #59189 | fix(dashboard): short-circuit OPTIONS preflight in auth middleware for CORS | dashboard, CORS, preflight | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
 | pré-loop | #59187 | fix(ui): rename Anthropic API Key to Anthropic Account for OAuth PKCE entry | ui, anthropic, oauth | CLOSED |
 | pré-loop | #59176 | fix(docs): correct Discord permission integers for text-only and voice presets | docs, discord, permissions | CLOSED |
