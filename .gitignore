@@ -1,0 +1,6 @@
+# The upstream clone lives here — never committed to this workspace repo.
+work/
+
+# Local scratch
+*.tmp
+__pycache__/

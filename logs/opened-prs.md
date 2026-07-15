@@ -1,0 +1,49 @@
+# Cumulative opened-PRs registry (anti-duplicate index)
+
+Format: `| date | PR | title | theme/keywords | outcome |`
+Check this file in Phase 4 (dedup) and before opening any PR.
+
+| Date | PR | Title | Theme | Outcome |
+|---|---|---|---|---|
+| 2026-07-14 | #64668 | fix(gateway): return EphemeralReply from /background ack to block double file upload | background, btw, extract_local_files, EphemeralReply, duplicate upload | OPEN |
+| 2026-07-15 | #64680 | fix(gateway): return EphemeralReply from /undo ack to block file-path leak | undo, extract_local_files, EphemeralReply, file leak | OPEN |
+| 2026-07-15 | #64689 | fix(desktop): accumulate MoA reference reasoning blocks instead of replacing | desktop, moa, reasoning, appendReasoningDelta, reference blocks | OPEN |
+| 2026-07-15 | #64701 | fix(tui): keep MoA reference blocks visible when the thinking section is hidden | tui, moa, thinking, isMoaReference, visibility | OPEN |
+| 2026-07-15 | #64731 | fix(state): inherit cwd/git_repo_root on parent_session_id children | hermes_state, session, cwd, git_repo_root, compression, sidebar | OPEN |
+| pré-loop | #59199 | fix(tools): recognize WhatsApp LID format in send_message target parsing | whatsapp, LID, send_message | CLOSED |
+| pré-loop | #59198 | fix(cli): print '✓ Update complete!' on the Already up to date path | cli, update, mensagem | CLOSED |
+| pré-loop | #59197 | fix(acp): skip detect_provider_for_model when input had explicit provider prefix | acp, provider prefix | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59196 | fix(tts): convert Piper raw WAV to Opus before sending as .ogg | tts, piper, opus, ogg | CLOSED |
+| pré-loop | #59195 | fix(gateway): inline auto_continue_freshness_window to remove lazy import coupling | gateway, lazy import | CLOSED |
+| pré-loop | #59194 | fix(slack): guard _resolve_thread_ts against async/cron deliveries using stale thread context | slack, thread_ts, cron | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59191 | fix(config): preserve model.context_length on same-model re-pick | config, context_length | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59189 | fix(dashboard): short-circuit OPTIONS preflight in auth middleware for CORS | dashboard, CORS, preflight | OPEN (reopened 2026-07-14, wrongly auto-closed — had COMMENTED maintainer review) |
+| pré-loop | #59187 | fix(ui): rename Anthropic API Key to Anthropic Account for OAuth PKCE entry | ui, anthropic, oauth | CLOSED |
+| pré-loop | #59176 | fix(docs): correct Discord permission integers for text-only and voice presets | docs, discord, permissions | CLOSED |
+| pré-loop | #59155 | fix: remove remaining stale noqa comments across repo | noqa, ruff, lint | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59151 | fix: remove stale noqa comments from tests/ files (RUF100) | noqa, ruff, tests | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59148 | fix: remove stale noqa comments from optional-skills/ files (RUF100) | noqa, ruff, optional-skills | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59147 | fix: remove stale noqa comments from gateway/ files (RUF100) | noqa, ruff, gateway | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59146 | fix: remove stale noqa comments from scripts/ files (RUF100) | noqa, ruff, scripts | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59145 | fix: remove stale noqa comments from skills/ files (RUF100) | noqa, ruff, skills | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59144 | fix: remove stale noqa comments from plugins/ files (RUF100) | noqa, ruff, plugins | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59143 | fix: remove stale noqa comments from agent/ files (RUF100) | noqa, ruff, agent | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59142 | fix: remove stale noqa comments from hermes_cli/ files (RUF100) | noqa, ruff, hermes_cli | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59141 | fix: remove stale noqa comments from tools/ files (RUF100) | noqa, ruff, tools | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59116 | fix(settings): clear model selection when switching providers | settings, model selection | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59115 | Remove stale noqa comments from lsp/manager.py | noqa, ruff, lsp | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59108 | fix: remove stale noqa/type:ignore comments in browser_tool.py | noqa, type:ignore, browser_tool | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59104 | fix(run_agent): remove 19 stale noqa directives | noqa, run_agent | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59103 | fix: remove stale noqa comments from tools/web_tools.py | noqa, web_tools | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59102 | fix: remove stale # noqa: BLE001 comments from tui_gateway/server.py | noqa, BLE001, tui_gateway | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #59100 | fix: remove stale # noqa comments from gateway/run.py | noqa, gateway/run.py | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58943 | refactor: replace redundant f"{var}" with bare var in plugins/ | fstring, plugins | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58942 | chore: remove unused imports in gateway/ | unused imports, gateway | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58941 | refactor: replace redundant f"{var}" with bare var in hermes_cli/ | fstring, hermes_cli | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58940 | refactor: replace redundant f"{var}" with bare var in agent/ | fstring, agent | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58939 | chore: remove unused imports in agent/ | unused imports, agent | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58938 | refactor: replace redundant f"{var}" with bare var in tools/ | fstring, tools | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58918 | refactor: replace redundant f"{var}" with bare var in string contexts | fstring | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58909 | chore: remove 25 unused imports across 18 Python files | unused imports | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58903 | fix(docs): replace broken NeurIPS style files URL with conference homepage | docs, neurips, url | CLOSED (stale >4d, 2026-07-14) |
+| pré-loop | #58900 | fix: idiomatic Python improvements in tui_gateway/, agent/, and tools/ | idiomatic python, tui_gateway | CLOSED (stale >4d, 2026-07-14) |
