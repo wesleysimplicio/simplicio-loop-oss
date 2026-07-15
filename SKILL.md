@@ -39,6 +39,26 @@ explicitly says so. Concretely:
   `NousResearch/hermes-agent`, apparently pulled from unrelated standing
   memory about a different project's loop).
 
+**Two different skills — do not conflate them.** `simplicio-loop-oss` (this
+skill, this file) owns **100% of the OSS-contribution domain logic**:
+dedup, the daily benchmark, forbidden themes, salvage rules, newcomer
+gates, PR house style, merge-rate tracking. `/simplicio-loop`
+(<https://github.com/wesleysimplicio/simplicio-loop>) is a **separate,
+domain-agnostic, self-referential convergence engine** — it has zero
+knowledge of GitHub, pull requests, dedup, or OSS contribution rules; all
+it knows is "re-feed this goal text until an evidence-gated promise is
+true, or a cap fires." This skill *optionally* uses it purely as an
+**execution primitive** for iterating within one outer run (see "Driving
+one iteration with /simplicio-loop" below) — never as a source of
+contribution policy. Every domain-specific gate (dedup, forbidden themes,
+PR house style, adversarial review, the benchmark, the newcomer cap) is
+enforced by THIS skill's own phases in PLAYBOOK.md, identically whether
+`/simplicio-loop` is driving that run or the plain fallback is. If a run
+ever behaves as if `/simplicio-loop` "decided" to skip a dedup check or
+open a forbidden-theme PR, that is a bug in this wiring, not a legitimate
+trade-off — `/simplicio-loop` only ever supplies *how to iterate*, never
+*what is allowed*.
+
 ## Invocation — choosing the target project
 
 The skill is invoked with a target, e.g.:
@@ -198,7 +218,16 @@ reached) AND logs updated, committed, and pushed.* Never declare the promise
 true when it isn't — fewer PRs with a logged reason satisfies it; a skipped
 gate does not.
 
-## Driving one iteration with /simplicio-loop (full flow — the quality spine)
+## Driving one iteration with /simplicio-loop (optional execution engine)
+
+`/simplicio-loop` here supplies *mechanical iteration rigor* — retry
+discipline, drift detection, independent re-verification — for the
+"implement" and "fix this stuck PR" steps. It does not know what a
+duplicate PR is, what this project's forbidden themes are, or what a
+compliant PR body looks like; those checks (Phase 4 dedup, PLAYBOOK.md
+"Forbidden themes", the PR body house style) still run exactly as written
+in PLAYBOOK.md, in every run, regardless of whether `/simplicio-loop` is
+present.
 
 This skill's OUTER repetition — firing every N minutes/hours — comes from
 whatever scheduler invoked it: a host `/loop <interval>`, an OS/cloud cron
