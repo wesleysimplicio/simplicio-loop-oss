@@ -86,7 +86,10 @@ under `projects/SLUG/` and the clone under `work/SLUG/`.
    technically the same day, conflicts get rebased and force-pushed with
    `--force-with-lease` to the fork only. A PR of ours open more than
    `STALE_PING_DAYS` days with zero interaction may get ONE polite ping
-   (max 1 per PR, recorded in `opened-prs.md`).
+   (max 1 per PR, recorded in `opened-prs.md`). Quality exception: a bug
+   fix with a referenced issue and green CI never auto-closes at
+   `STALE_CLOSE_DAYS` — it gets the ping and a `STALE_PING_DAYS` window
+   instead (PLAYBOOK Phase 2.4).
 2. **Daily planning** (first run of a local calendar day for this project):
    learn from closures (a theme with 2+ unmerged closures enters the
    forbidden list) → strategic reflection → release/CI health check →

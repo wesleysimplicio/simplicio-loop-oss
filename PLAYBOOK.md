@@ -202,16 +202,24 @@ For each open PR:
    requested change OR reply with technical justification, same day.
 3. Conflict (`mergeable: CONFLICTING`) → rebase on the default branch,
    resolve, `git push --force-with-lease fork <branch>` (fork branches only).
-4. **Auto-close on staleness — with the engagement guard**: a PR open more
-   than `STALE_CLOSE_DAYS` days may be closed as stale ONLY when BOTH hold:
-   `reviewDecision` is empty AND
-   `gh pr view <N> --json reviews -q '.reviews[] | select(.author.login != "'$GH_LOGIN'")'`
-   returns nothing. `reviewDecision` only reflects APPROVED /
-   CHANGES_REQUESTED — a maintainer review in COMMENTED state does NOT set
-   it, and closing over an active conversation is a serious error (it
-   happened; see Accumulated lessons). Any third-party review or recent
-   maintainer comment blocks the auto-close. When closing, use a polite
-   standard comment and update `logs/opened-prs.md` with the outcome.
+4. **Auto-close on staleness — with the engagement guard AND the quality
+   exception**: a PR open more than `STALE_CLOSE_DAYS` days may be closed
+   as stale ONLY when ALL THREE hold:
+   - `reviewDecision` is empty, AND
+   - `gh pr view <N> --json reviews -q '.reviews[] | select(.author.login != "'$GH_LOGIN'")'`
+     returns nothing (`reviewDecision` only reflects APPROVED /
+     CHANGES_REQUESTED — a maintainer review in COMMENTED state does NOT
+     set it, and closing over an active conversation is a serious error;
+     it happened, see Accumulated lessons), AND
+   - the PR is NOT a quality PR. **Quality exception: a bug fix with a
+     referenced issue and green CI never auto-closes at
+     `STALE_CLOSE_DAYS`** — review latency is normal in most projects.
+     Quality PRs get the polite ping (step 5) and a `STALE_PING_DAYS`
+     window instead; only reconsider closure well past that window, and
+     log the reasoning.
+   Any third-party review or recent maintainer comment blocks the
+   auto-close. When closing, use a polite standard comment and update
+   `logs/opened-prs.md` with the outcome.
 5. **Polite ping**: a PR of ours open more than `STALE_PING_DAYS` days with
    zero interaction (no review, no comment, CI green) may get ONE short,
    polite ping asking whether maintainers would like changes. Max 1 ping
@@ -269,9 +277,11 @@ gh pr list --repo "$UPSTREAM_REPO" --state closed --limit 40 \
 
 A salvage candidate must satisfy ALL of: the underlying issue/problem still
 exists on the current default branch; the closed PR contains genuinely
-valuable work (not churn); it was abandoned (author inactive / closed for
-staleness or logistics, NOT rejected on technical merit — read the closure
-conversation); and it passes Phase 4 dedup (nobody else re-opened it).
+valuable work (not churn); it was **abandoned** — author inactive / closed
+for staleness or logistics. **Abandonment ≠ rejection**: a PR closed on
+technical merit or by upstream POLICY is NOT salvageable (read the closure
+conversation before deciding); and it passes Phase 4 dedup (nobody else
+re-opened it).
 Execution: cherry-pick the original commits **preserving authorship**, fix
 conflicts and gaps in follow-up commits under our name, title with
 `(salvage #NNN)`, credit the original author explicitly in the body, and

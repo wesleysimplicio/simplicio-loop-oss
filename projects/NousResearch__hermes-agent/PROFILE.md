@@ -143,3 +143,10 @@ Defaults from `config.env` apply (`DAILY_PR_TARGET=10`, `DAILY_PR_HEALTHY=5`
   house style for "fill NULLs, never clobber" DB writes; follow it.
 - (2026-07-15) 4 of our first 28 PRs had COMMENTED maintainer reviews that
   a naive staleness check missed (see PLAYBOOK trap); 3 were positive.
+- (2026-07-15) Merged PR #64541 pattern for pre-existing test failures:
+  declare them explicitly in Validation — "reproduces identically on
+  upstream/main" (verified by stashing the change) — instead of hiding or
+  over-explaining them. Reviewers here accept that framing.
+- (2026-07-15) Review latency here is days-to-weeks for external PRs; a
+  4-day staleness close destroyed viable quality PRs once. Quality PRs
+  (bug fix + issue + green CI) hold for the 14-day ping window instead.
