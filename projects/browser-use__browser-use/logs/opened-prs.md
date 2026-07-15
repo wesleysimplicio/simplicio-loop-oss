@@ -2,4 +2,6 @@
 
 Format: `YYYY-MM-DD | #NNNN | title | theme/keywords | status`
 
-_None yet. Newcomer gate active (0 merges)._
+2026-07-15 | #5238 | fix(agent): detect plus-addressed emails in variable_detector | email regex, variable_detector, plus-addressing | OPEN
+
+Newcomer gate active (0 merges).
