@@ -138,6 +138,37 @@ PLAYBOOK.md are the complete specification — never block on a missing skill.
 | `/fix-ci` | Phase 2 babysit: diagnose and fix red CI on our PRs | Inspect `gh pr checks` + logs and fix by hand |
 | `/get-pr-comments` | Phase 2 babysit: fetch/summarize reviewer feedback | `gh pr view <N> --json reviews,comments` with clamped output |
 
+## simplicio-runtime integration (deterministic, zero/low-token substrate)
+
+When `simplicio-runtime` is installed (binary or MCP tools `simplicio_map`,
+`simplicio_memory`, `simplicio_search`, `simplicio_read`, `simplicio_symbol`,
+`simplicio_edit`, `simplicio_gate`, `simplicio_validate`, `simplicio_exec`),
+prefer it over raw grep/cat/manual reasoning for these facts — it is a
+compiled deterministic tool, not the LLM, so it costs no/near-zero tokens:
+
+| Need | simplicio-runtime call | Falls back to |
+|---|---|---|
+| Repo orientation before Phase R/3 | `simplicio-runtime map --repo "$CLONE" --json` (or MCP `simplicio_map`) | manual `find`/`grep` survey |
+| "have we seen this before" (past runs, prior candidates, lessons) | MCP `simplicio_memory` / `simplicio-runtime memory query` | re-reading PROFILE.md/logs in full |
+| Locate a symbol/definition/callers for a bug candidate | MCP `simplicio_symbol` / `simplicio-runtime` symbol lookup | manual `grep -rn` across the clone |
+| Full-text code search across the clone | MCP `simplicio_search` | `grep`/`rg` (still fine when the runtime isn't installed) |
+| Read a file at signature level (skip boilerplate) | MCP `simplicio_read` | the `Read` tool on the whole file |
+| Mechanical, low-risk edit (rename, small structural change) | MCP `simplicio_edit` (sandboxed, dry-run first) | manual `Edit` tool |
+| Risk-classify a candidate/diff before implementing | MCP `simplicio_gate` | judgment call per PLAYBOOK Phase 4/5 |
+| Pre-push sanity beyond the adversarial review | MCP `simplicio_validate` | the profile's own lint/test commands |
+
+**Detection**: check once per run (cheap) — `where simplicio-runtime` /
+`command -v simplicio-runtime`, or probe whether the MCP tools are present
+in this session's tool list. Cache the result in the day's log so later
+phases in the same run don't re-probe.
+
+**Not installed = no-op, never a blocker.** Every phase in this skill has a
+plain-shell fallback (grep, `gh`, manual read) specified in PLAYBOOK.md —
+simplicio-runtime is a token-saving accelerant, never a hard dependency.
+Never install, register, or reconfigure simplicio-runtime as a side effect
+of running this loop; that is a one-time human setup step (see the parent
+project's install notes), not something Phase R/0 should attempt.
+
 **Run promise** (what `/simplicio-loop` iterates toward; also the definition
 of "done" for a manual run): *open PRs triaged (CI green or being fixed,
 feedback answered) AND (daily planning done, if it wasn't yet) AND

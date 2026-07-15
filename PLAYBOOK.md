@@ -55,6 +55,11 @@ contribution priorities as captured in its PROFILE.md.
 - When the host provides `/simplicio-orient` (terminal-first facts, clamped
   output) and `/simplicio-compress` (terse logs), drive these rules through
   them; otherwise apply them manually as written here.
+- When `simplicio-runtime` is installed (CLI or MCP tools — see SKILL.md's
+  "simplicio-runtime integration" table), prefer it for repo mapping,
+  memory recall, symbol lookup, search, and mechanical edits: it is a
+  compiled deterministic tool, not the LLM, so those facts cost no/near-zero
+  tokens. Absent it, fall back to the plain-shell rules below — never block.
 - Answer every fact about filesystem/git/processes via terminal with clamped
   output (head/tail/count/focused grep) — never dump whole files, diffs, or
   logs into context. Builds and tests always with summarized output (`-q`,
