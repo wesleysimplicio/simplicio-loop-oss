@@ -214,7 +214,9 @@ Reflect explicitly and **record in the day's log**:
    hot?
 3. What is the best strategy **today**? Valid options: babysit only; review
    third-party PRs (builds reputation); audit candidates; a hot tracker
-   issue; a salvage; a follow-up to one of our merged PRs.
+   issue; a salvage; a follow-up to one of our merged PRs; **first-mover on
+   a freshly-filed issue** (Phase 2b, runs every iteration regardless of
+   today's planning — the point is not to wait for planning day to catch it).
 4. The chosen strategy must **maximize merge rate, not volume**. If the best
    play today is opening zero PRs, that is the right call — log why.
 
@@ -285,6 +287,48 @@ For each open PR:
 maintainer review (`NEWCOMER_MAX_OPEN_UNREVIEWED` while we have zero merges
 in this project), pause new PRs (Phase 5 becomes a no-op) and only babysit
 until the queue drains; Phases 1–4 still run to accumulate candidates.
+
+## Phase 2b — Fresh issue scan (EVERY run — first-mover strategy)
+
+Being first matters uniquely here: a strong bug issue in an active repo gets
+claimed by another contributor within minutes (see "High-quality issues ...
+claimed in MINUTES" lesson below). Once/day planning is too slow to catch
+that window, so this phase runs every single iteration, cheaply:
+
+```bash
+gh issue list --repo "$UPSTREAM_REPO" --state open --limit 15 \
+  --json number,title,createdAt,labels,comments --search "sort:created-desc"
+```
+
+- Compare against `logs/last-issue-seen.md` (one line: highest issue number
+  already scanned) — only evaluate issues newer than that; update the file
+  after this run regardless of outcome. This keeps the scan cheap (a handful
+  of genuinely new issues per run, not a full re-read of 15 every time).
+- For each new issue, a fast triage, in order — stop at the first disqualifier:
+  1. Does it already have a comment/linked PR claiming it (`comments > 0` is
+     a cheap pre-filter; `gh issue view <N> --json comments` to confirm no
+     "I'll take this" / "working on it" / bot-linked PR)? Claimed → skip.
+  2. Is it a real, reproducible bug (or a small, well-scoped feature aligned
+     with a hot area) — not a design debate, not something needing hardware/
+     infra we don't have? Speculative or unreproducible → skip (post a
+     technical comment instead if you already have partial evidence; do not
+     open a PR on an unverified claim).
+  3. Does the project require issue-first/assignment (PROFILE.md)? If so,
+     "being first" here means being first to **comment and request
+     assignment** — not first to open an unrequested PR. Do that immediately
+     for a strong, unclaimed match, then wait; do not implement until
+     assigned.
+- A fresh issue that survives triage and needs no assignment gate: run the
+  FULL Phase 4 dedup (never skip it for speed — a fresh issue can still be a
+  duplicate of an older open PR) and, if it survives, insert it at the TOP
+  of today's backlog — ahead of already-ranked candidates — and consider
+  implementing it THIS run if the daily cap allows (Phase 5 doesn't have to
+  wait for the once-daily planning cycle to pick it up).
+- **Speed is a tie-breaker between equally-qualified candidates, never a
+  license to skip a gate.** A fast, sloppy PR still gets closed — it just
+  gets closed faster, and burns the same reputation. Every guardrail (dedup,
+  mandatory test, no fabrication, forbidden themes) applies identically to
+  a fresh-issue candidate and a once-daily-planning one.
 
 ## Phase 3 — Mechanical audit (once/day)
 
@@ -366,11 +410,14 @@ to claim it).
   constructive technical review there instead of competing; discard.
 - Check `logs/opened-prs.md` — never duplicate one of our own PRs (open,
   closed, or merged).
-- **Rank survivors**: (a) bug with an open issue AND maintainer engagement
-  > (b) bug in a hot area from the benchmark snapshot > (c) salvage
-  > (d) small fix with a clear reproduction. **Reject any candidate without
-  an issue or a real user-visible symptom** (salvage exception per
-  Phase 3c).
+- **Rank survivors**: (0) a freshly-filed, unclaimed, reproducible issue
+  caught this run by Phase 2b — jumps the queue precisely because the claim
+  window is minutes wide, not because it needs less scrutiny (it still
+  passes every gate below) > (a) bug with an open issue AND maintainer
+  engagement > (b) bug in a hot area from the benchmark snapshot >
+  (c) salvage > (d) small fix with a clear reproduction. **Reject any
+  candidate without an issue or a real user-visible symptom** (salvage
+  exception per Phase 3c).
 - Save approved candidates, ranked, to `logs/backlog-YYYY-MM-DD.md`.
 
 ## Phase 5 — Implement (every run; daily target applies)
@@ -447,6 +494,17 @@ each candidate:
 ---
 
 ## Accumulated lessons (process-level; project lessons live in each PROFILE.md)
+
+- (2026-07-15) **First-mover strategy on fresh issues (Phase 2b)**: added by
+  explicit user request — the once-daily planning cycle was too slow to
+  catch a strong issue before another contributor claimed it (already
+  observed: high-quality issues get claimed within minutes). Phase 2b now
+  runs every iteration, not just planning day, and can insert a fresh,
+  unclaimed, reproducible candidate at the top of today's backlog for
+  immediate implementation. Guardrail: speed is a tie-breaker between
+  already-qualified candidates, never a shortcut past dedup, the
+  assignment gate, or the mandatory test — a fast sloppy PR still gets
+  closed, just faster, for the same reputation cost as a slow one.
 
 - (2026-07-15) **Full /simplicio-loop flow, not just the promise/scratchpad
   shell**: the first wiring only used `/simplicio-loop` for its

@@ -189,14 +189,21 @@ run the normal per-repo pipeline against each independently:
    fix with a referenced issue and green CI never auto-closes at
    `STALE_CLOSE_DAYS` — it gets the ping and a `STALE_PING_DAYS` window
    instead (PLAYBOOK Phase 2.4).
-2. **Daily planning** (first run of a local calendar day for this project):
+2. **Fresh issue scan** (EVERY run, not just planning day — PLAYBOOK Phase
+   2b): check for newly-filed issues since the last run; a strong,
+   unclaimed, reproducible one jumps the queue — the point is to catch it
+   in the minutes-wide window before another contributor claims it, not to
+   wait for the daily planning cycle. Speed is a tie-breaker between
+   equally-qualified candidates, never a reason to skip dedup, the
+   assignment gate, or the mandatory test.
+3. **Daily planning** (first run of a local calendar day for this project):
    learn from closures (a theme with 2+ unmerged closures enters the
    forbidden list) → strategic reflection → release/CI health check →
    mechanical audit → top-contributor benchmark (alias-deduped, maintainers
    separated from externals — imitate the externals) → salvage hunt (max
    `MAX_SALVAGES_PER_DAY`) → dedup + **ranking** → ranked backlog in
    `projects/SLUG/logs/backlog-YYYY-MM-DD.md`.
-3. **Implement** (every run, after babysit): while today's opened-PR count is
+4. **Implement** (every run, after babysit): while today's opened-PR count is
    below `DAILY_PR_TARGET` and the backlog has candidates, implement 1–2 of
    them: branch off the updated default branch; the smallest change that
    solves the problem (target ≤ `DIFF_LINES_TARGET` changed lines — above
@@ -204,7 +211,7 @@ run the normal per-repo pipeline against each independently:
    bug fixes (using the profile's test commands); adversarial review before
    push; immediate re-dedup before opening each PR; record every opened PR
    in `projects/SLUG/logs/opened-prs.md`.
-4. **Persist state** (every run, last step): commit `projects/SLUG/` changes
+5. **Persist state** (every run, last step): commit `projects/SLUG/` changes
    (logs + profile updates) and any PLAYBOOK.md lesson updates in the
    workspace repo and push — this is what lets any other computer or LLM
    resume with full memory.
