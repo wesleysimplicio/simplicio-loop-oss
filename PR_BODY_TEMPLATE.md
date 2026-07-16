@@ -5,13 +5,29 @@
      these in — do NOT add an upstream-style checklist yourself when the
      repo doesn't inject one.
      Everything in ENGLISH. NEVER fabricate test results — run the command,
-     paste the real outcome. Mermaid diagrams are part of OUR contribution
-     signature (user decision, 2026-07-15): include a compact BEFORE→AFTER
-     diagram in the Summary whenever the fix involves a flow, event
-     sequence, race condition, or component interaction. Exceptions: the
-     project's PROFILE.md explicitly records that its review culture
-     rejects diagrams, or the fix is a one-line/value change with no flow.
-     The diagram must explain behavior, not decorate. -->
+     paste the real outcome. Mermaid: DATA-DRIVEN, NOT a default — measure
+     the target project's actual last ~25 merged PRs (PROFILE.md benchmark)
+     before adding one. On hermes-agent specifically: 0 of the last 25
+     merged externals used a diagram (checked 2026-07-16); the winning
+     pattern is EVIDENCE DENSITY instead — exact file:line reasoning,
+     before/after log output pasted verbatim, exact test names + counts,
+     production repro when available. Add a mermaid diagram only on top of
+     that evidence, and only when a flow/race/sequence is genuinely hard to
+     narrate in prose — never as a substitute for evidence, never as
+     decoration. If the target project's own benchmark shows diagrams ARE
+     common among its merged PRs, follow that project's data instead. -->
+
+<!-- If the upstream repo injects its own PR template (a `.github/*` file
+     with sections like "What does this PR do?" / "Type of Change" /
+     "Changes Made" / "How to Test" / a Checklist), FILL THAT ONE — verified
+     on hermes-agent 2026-07-16: contributors who fill the real injected
+     template with high evidence density merge; a free-form narrative
+     (Summary/root-cause/Fix/Validation, no checklist) also merges when
+     evidence density is equally high. Template shape matters far less than
+     specific file:line detail, real before/after output, and honest test
+     counts. Weave this generic template's structure into whichever shape
+     the target project actually uses — do not force this shape over an
+     injected one. -->
 
 ## Summary
 
