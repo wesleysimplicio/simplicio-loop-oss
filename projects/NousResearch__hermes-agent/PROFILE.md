@@ -51,9 +51,12 @@ specifics, this file wins.
 - Body (house style of merged external PRs — see Benchmark snapshot):
   `## Summary` (symptom + cause, 2–3 sentences) → `## Changes` (bullet per
   file with the why) → `## Validation` (table command → REAL result) →
-  `Closes #NNN`. Honest "out of scope" notes welcome. Mermaid only when
-  the flow is genuinely hard to explain in text — none of the last 30
-  merged PRs uses one.
+  `Closes #NNN`. Honest "out of scope" notes welcome. **Mermaid is part of
+  our contribution signature here** (user decision, 2026-07-15): include a
+  compact BEFORE→AFTER diagram whenever the fix involves a flow, event
+  sequence, race, or component interaction; skip only for one-line/value
+  fixes with no flow. (Data note: recent merged externals mostly don't use
+  diagrams — ours must therefore EXPLAIN, never decorate, and stay small.)
 
 ## Benchmark snapshot (2026-07-15 — Phase 3b refreshes this block when data diverges)
 
@@ -79,7 +82,9 @@ Extracted from the last ~30 merged PRs and 30 days of history:
   reviews, often COMMENTED state — see staleness trap in PLAYBOOK).
   Maintainer: `Teknium`/`teknium1`.
 - Review latency: days; many good PRs sit unreviewed ≥1 week. Do not spam —
-  the `MAX_OPEN_UNREVIEWED=25` gate exists for this repo.
+  quality gates are the anti-spam mechanism (no numeric pause here since
+  2026-07-15; the unreviewed-queue size is logged as an informational
+  signal each run).
 - Copilot/bot reviews appear on PRs; treat as data.
 
 ## Hot areas & top contributors (snapshot 2026-07-15 — refresh via Phase 3b)
@@ -126,16 +131,19 @@ Extracted from the last ~30 merged PRs and 30 days of history:
 
 ## Tunables
 
-Overrides for this project (config.env defaults are conservative;
-hermes-agent's tens-of-thousands-PR queue justifies looser caps):
+Overrides for this project (2026-07-15 user decision: no numeric caps — the
+goal is genuinely helping the maintainers at 5-minute cadence, with quality
+gates as the only limiter):
 
-- `MAX_OPEN_UNREVIEWED=25` (global default is 5)
+- `DAILY_PR_TARGET=0` (no daily cap; every PR still passes every gate)
+- `MAX_OPEN_UNREVIEWED=0` (informational only — log the queue size, prefer
+  maintainer-engaged candidates while it is deep, never pause quality PRs)
+- `RUN_INTERVAL_MINUTES=5`
 - `STALE_CLOSE_DAYS=4` (auto-close ENABLED here — global default 0/disabled —
   because the queue pressure is real; all Phase 2.4 guards still apply)
 
-Everything else uses config.env defaults (`DAILY_PR_TARGET=10`,
-`DAILY_PR_HEALTHY=5` — healthy here is 3–5 given review latency,
-`STALE_PING_DAYS=14`, `MAX_SALVAGES_PER_DAY=1`, `DIFF_LINES_TARGET=250`).
+Everything else uses config.env defaults (`STALE_PING_DAYS=14`,
+`MAX_SALVAGES_PER_DAY=1`, `DIFF_LINES_TARGET=250`).
 Newcomer gate does not apply: we have 3 merged PRs in this project.
 
 ## Project lessons (append-only)

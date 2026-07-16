@@ -5,10 +5,13 @@
      these in — do NOT add an upstream-style checklist yourself when the
      repo doesn't inject one.
      Everything in ENGLISH. NEVER fabricate test results — run the command,
-     paste the real outcome. Diagrams (mermaid) are OPTIONAL and usually
-     wrong: check the benchmark snapshot — if the project's recent merged
-     PRs don't use them, don't either. Only add one when the flow is
-     genuinely hard to explain in text. -->
+     paste the real outcome. Mermaid diagrams are part of OUR contribution
+     signature (user decision, 2026-07-15): include a compact BEFORE→AFTER
+     diagram in the Summary whenever the fix involves a flow, event
+     sequence, race condition, or component interaction. Exceptions: the
+     project's PROFILE.md explicitly records that its review culture
+     rejects diagrams, or the fix is a one-line/value change with no flow.
+     The diagram must explain behavior, not decorate. -->
 
 ## Summary
 

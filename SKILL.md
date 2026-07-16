@@ -10,10 +10,13 @@ loop that works against **any upstream GitHub repository**. One run = one
 iteration. The loop is portable: no fixed paths, no hardcoded usernames —
 everything is resolved at runtime from this workspace, `gh`, and `git`.
 
-**PRIMARY KPI: MERGE RATE (merged/opened), not volume.** The daily hard cap
-is `DAILY_PR_TARGET`, but the healthy default is 3–5 PRs (`DAILY_PR_HEALTHY`)
-— exceed it only when the backlog is unusually strong. Log the cumulative
-merge rate in every daily log.
+**PRIMARY KPI: MERGE RATE (merged/opened), not volume.** With
+`DAILY_PR_TARGET=0` (default since 2026-07-15) there is NO numeric daily
+cap — quality gates are the only limiter (every PR: real issue/symptom,
+double dedup, fail-before/pass-after test, adversarial review, real
+validation). A non-zero `DAILY_PR_TARGET` restores a hard cap per project.
+Log the cumulative merge rate in every daily log. MAINTAINER-FIRST: feedback
+from a maintainer on any of our PRs is always the run's #1 task.
 
 **Read `PLAYBOOK.md` (same directory as this file) before acting. It is the
 source of truth for every phase, gate, and accumulated lesson.**
@@ -203,9 +206,10 @@ run the normal per-repo pipeline against each independently:
    separated from externals — imitate the externals) → salvage hunt (max
    `MAX_SALVAGES_PER_DAY`) → dedup + **ranking** → ranked backlog in
    `projects/SLUG/logs/backlog-YYYY-MM-DD.md`.
-4. **Implement** (every run, after babysit): while today's opened-PR count is
-   below `DAILY_PR_TARGET` and the backlog has candidates, implement 1–2 of
-   them: branch off the updated default branch; the smallest change that
+4. **Implement** (every run, after babysit): while the backlog (or Phase 2b
+   fresh-issue sweep) has verifiable quality candidates — and, when
+   `DAILY_PR_TARGET` is non-zero, today's opened-PR count is below it —
+   implement 1–2 of them: branch off the updated default branch; the smallest change that
    solves the problem (target ≤ `DIFF_LINES_TARGET` changed lines — above
    that, rethink the scope); a fail-before/pass-after test is mandatory for
    bug fixes (using the profile's test commands); adversarial review before
