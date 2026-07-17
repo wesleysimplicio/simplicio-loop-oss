@@ -536,6 +536,62 @@ each candidate:
 
 ## Accumulated lessons (process-level; project lessons live in each PROFILE.md)
 
+- (2026-07-17) **Scheduled-task WORKSPACE silently pointed at the read-only
+  mirror, not the git repo — losing state, and all 4 tasks had drifted to
+  `enabled: false`.** Each scheduled task's prompt told the agent to read
+  `SKILL.md` at `C:\Users\Z0059V7A\.claude\skills\simplicio-loop-oss\` (the
+  plain-copy mirror, no `.git`) and never set `CONTRIB_LOOP_HOME`, so per the
+  Runtime-context table WORKSPACE resolved to "the directory containing
+  SKILL.md" = the mirror. Every write a scheduled run made — logs, backlog,
+  `opened-prs.md`, watermark files — landed in an uncommittable directory.
+  Confirmed damage found and repaired 2026-07-17: vllm's and sglang's
+  mid-day 2026-07-15 iteration logs (iterations 2–4, ~9KB and ~5KB of real
+  triage work) and hermes-agent's entire 2026-07-16 log existed ONLY in the
+  mirror and had never reached the real repo
+  (`C:\Users\Z0059V7A\m\repos\simplicio-loop-oss`, remote `origin`) — recovered
+  by diffing file sizes/timestamps between mirror and real per project and
+  copying the mirror's newer copy over, then committing. Separately, and
+  independently of the above, all 4 scheduled tasks
+  (`oss-loop-vllm`/`oss-loop-sglang`/`oss-loop-browser-use`/
+  `oss-loop-hermes-agent`) had `enabled: false` with `lastRunAt` stuck at
+  2026-07-15/16 — nothing had run in a day-plus. **Fix applied**: every
+  scheduled task's prompt now sets `CONTRIB_LOOP_HOME` to the real repo path
+  before reading the mirror's SKILL.md/PLAYBOOK.md (those static files are
+  fine to read from the mirror; only STATE must not live there), and all 4
+  tasks were re-enabled. **Durable rule**: reading playbook/skill text from a
+  plain-copy mirror is fine; the mirror must never be where per-project STATE
+  (logs/, PROFILE.md, opened-prs.md) is written, because nothing commits it.
+  Any host that separates "where instructions are read from" and "where
+  `$CONTRIB_LOOP_HOME` resolves to" needs this pointed at the real repo
+  explicitly — never assume they're the same directory. Also: periodically
+  check `enabled` on every scheduled task this loop depends on — a
+  silently-disabled cron produces zero errors, just zero progress, and can go
+  unnoticed for days since nothing "fails" observably from the outside.
+
+- (2026-07-17) **Reconciling an external cumulative volume target (e.g. "open
+  50 PRs") across several parallel per-project loops without violating the
+  merge-rate-not-volume KPI.** A user-set cross-project target is a
+  reporting/dashboard concern, never a per-project quality override — no
+  project's gates loosen because the total is behind. What actually moves the
+  total, in priority order: (1) **first check the loops are actually running**
+  (see the lesson above — a disabled/broken scheduler produces a permanent
+  zero regardless of target); (2) let supply-rich projects carry more of the
+  volume naturally instead of forcing supply-poor ones — a benchmark snapshot
+  already tells you which is which (hermes-agent's steady stream of
+  maintainer-engaged bug reports vs. vllm/sglang's GPU-heavy, ultra-competitive
+  issue queues where multiple consecutive iterations correctly found zero
+  viable candidates and opened zero PRs, per PROFILE.md "Project lessons" and
+  the daily logs); (3) if a project structurally has too little
+  newcomer-viable, CPU/non-GPU-verifiable, unclaimed supply to ever contribute
+  meaningfully to the total, that is a signal to **add more, easier projects**
+  to the active roster (the org-level invocation mechanism already supports
+  this) rather than to pressure the starved project's gates; (4) never
+  interpret "PRs" as "PRs opened regardless of outcome" — a PR opened and then
+  closed as spam actively hurts the same reputation the next PR on that
+  project depends on, so a raw open-count target is in tension with the
+  primary KPI and should be tracked ALONGSIDE merge rate, never in place of
+  it, in any status report back to the user.
+
 - (2026-07-15) **Stale-close (Phase 2.4) re-closed PRs with an existing
   maintainer review, twice, on the same two PRs**: hermes-agent#59197 and
   #59191 each carry a COMMENTED maintainer review, were wrongly
