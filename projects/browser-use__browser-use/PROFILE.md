@@ -13,7 +13,21 @@ _Phase R reconnaissance: 2026-07-15. Refresh benchmark on demand._
 
 - CONTRIBUTING.md points to docs.browser-use.com (contribution-guide, local-setup)
   and the `help wanted` issue label (currently EMPTY — no open help-wanted issues).
-- **No CLA, no DCO** found (no `-s` required; no CLA bot in workflows). Not blocking.
+- **CLA REQUIRED — BLOCKING (corrected 2026-07-17).** Earlier Phase R wrongly
+  recorded "no CLA" (it isn't in the workflows dir; the CLA-assistant runs as a
+  GitHub App, not a workflow file). PR #5238 confirms it: `CLAassistant` bot
+  posted a `not_signed` badge. **No PR merges until the human signs the CLA at
+  https://cla-assistant.io/browser-use/browser-use** (one-time per GitHub account).
+  Additional blocker on #5238 specifically: the commit was authored as
+  `wesley.simplicio.ext@siemens-energy.com` / "Simplicio, Wesley (ext)", an email
+  NOT linked to the `wesleysimplicio` GitHub account, so the CLA bot says the
+  author "seems not to be a GitHub user" and cannot match a signature. To unblock:
+  (a) add that email to the wesleysimplicio GitHub account, OR (b) re-author the
+  commit with the account's GitHub-verified/noreply email, THEN sign the CLA.
+- No DCO (`-s`) requirement found.
+- **HARD STOP for the loop until the CLA is signed AND the commit identity is
+  fixed: open ZERO new PRs.** Opening more PRs only stacks more `not_signed`
+  badges and burns newcomer reputation.
 - Integration examples have their own guidelines (`examples/integrations/README.md`).
 - Has a `@claude` GitHub Action (claude.yml) and an AI review bot on PRs — expect an
   automated review comment; address it before pinging humans.
