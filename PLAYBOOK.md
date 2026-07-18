@@ -429,6 +429,56 @@ conflicts and gaps in follow-up commits under our name, title with
 reference the original PR. Salvage bypasses the "no PRs without an issue"
 rule only when the original PR itself documents the real symptom.
 
+## Phase 3.5 — Prototype-First gate (issue #11, epic #1, upstream simplicio-loop#568)
+
+Before a candidate becomes a real patch/PR, prove it — this is the adapter
+for simplicio-loop's Prototype-First contract, scoped locally (this repo
+does not implement the upstream coordinator, scheduler, or ledger; it only
+consumes the pattern). Implementation: `scripts/prototype_gate.py`; tests:
+`tests/test_prototype_gate.py` (`python3 -m unittest discover -s tests`).
+
+```text
+candidate + double dedup (before)
+  -> reproducer required (bug: red command/test; feature: design/schema spike)
+  -> isolated worktree/private branch (never the default branch)
+  -> double dedup (after)
+  -> independent judge: ACCEPT | REVISE | REJECT
+  -> ACCEPT only: exactly one delivery owner may open the PR (Phase 5)
+```
+
+- **No prototype ever opens a PR, comments, or pings a maintainer.**
+  `prototype_gate.ReadOnlyGuard` wraps the GitHub-effects client for the
+  whole prototype phase — any attempted `open_pr`/`add_comment`/
+  `ping_maintainer` call raises immediately instead of silently no-opping.
+- **Reproducer is mandatory** (`require_reproducer`): a bug candidate needs a
+  captured failing command result (a red test) or, when the target has no
+  usable test suite, documented equivalent evidence. A feature candidate
+  needs a policy-compatible design/schema spike. No patch candidate exists
+  before this passes.
+- **Isolation**: `PrototypeWorktree.create` refuses to prototype on the
+  target's default branch; the candidate always lives in its own
+  `git worktree` on a private branch.
+- **Double dedup**: `DuplicateIndex` checks the local candidate ledger
+  before AND after prototyping (mirrors the `opened-prs.md` convention,
+  scoped to prototype candidates — it does not replace this file's Phase 4
+  `gh search` dedup against the real upstream repo, which still runs).
+- **Independent judge**: `judge_candidate` refuses a verdict where the judge
+  is the candidate's own creator.
+- **Delivery gate**: `DeliveryHandoff` only exists for a genuine ACCEPT
+  verdict (a forged or missing decision, or REJECT/REVISE, raises
+  `DeliveryNotAuthorizedError`) and only the named delivery owner may call
+  through it — this is the sole path into Phase 5's `git push`/PR open.
+- **PROFILE.md read, not reinvented**: `load_prototype_policy` does a
+  shallow, best-effort read of a project's PROFILE.md (CLA/DCO/issue-first
+  signals, test commands) so the prototype stage doesn't ask twice; the
+  full per-target policy model is epic #1/upstream #568 scope.
+
+Deferred to the parent epic/upstream contract, not built here: the
+multi-machine E2E, a general CLA/DCO enforcement engine, and the
+merge-rate/newcomer-cap policy engine (those remain policy text in this
+file and SKILL.md, read by the loop operator, not re-implemented as code
+by this gate).
+
 ## Phase 4 — Dedup + ranking (mandatory gate)
 
 For **each** candidate, discarding at the first hit:
