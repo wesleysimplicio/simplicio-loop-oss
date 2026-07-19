@@ -42,7 +42,24 @@ Usage (library, not a CLI):
         CandidateKind, ReproducerEvidence, require_reproducer,
         DuplicateIndex, PrototypeWorktree, judge_candidate,
         JudgeVerdictKind, DeliveryHandoff, run_prototype_stage,
+        require_observable_assertion,
     )
+
+Extension (DOD framework, layer 3 "quality-of-the-test", see DOD.md):
+``require_observable_assertion`` closes a gap this playbook's existing gates
+did not cover — a "fail-before/pass-after test" (Phase 5, rule 4) can be
+satisfied by a test that only proves the code *ran without raising*, which
+is not the same as proving it produced the *correct observable result*.
+Two real bugs from this session motivated the gate (see DOD.md for the full
+writeup): a multi-file edit plan that silently corrupted an unrelated file
+while every existing test stayed green (nothing asserted on that file's
+final content), and a line-selection regex that quietly swallowed a blank
+line (nothing asserted on the exact line/content produced, only that the
+command exited 0). Both would have passed every check already in this
+module. ``require_observable_assertion`` statically inspects a unified diff
+and blocks promotion when a candidate touches non-test files without at
+least one added test assertion that pins down a concrete observable value
+(not a bare "it ran"/"it returned 0"/"it's truthy" check).
 """
 
 from __future__ import annotations
@@ -400,6 +417,176 @@ def load_prototype_policy(profile_path: Path) -> PrototypePolicy:
 
 
 # ---------------------------------------------------------------------------
+# 7b. Observable-assertion requirement (DOD.md layer 3 — quality of the test)
+# ---------------------------------------------------------------------------
+
+class InsufficientTestAssertionError(RuntimeError):
+    """Raised when a candidate touches production code without an added
+    test assertion that pins down a concrete observable result."""
+
+
+_DOC_ONLY_EXTENSIONS = (
+    ".md", ".rst", ".txt", ".adoc", ".mdx", ".rdoc",
+)
+_DOC_ONLY_BASENAMES = (
+    "license", "license.md", "license.txt", "notice", "changelog",
+    "changelog.md", "authors", "codeowners", "contributing.md",
+    "code_of_conduct.md",
+)
+
+
+def _is_doc_only_path(path: str) -> bool:
+    """True for documentation/metadata files that carry no runtime
+    behavior — these never need an accompanying test assertion, even
+    though they are not test files either."""
+    name = path.rsplit("/", 1)[-1].lower()
+    if name in _DOC_ONLY_BASENAMES:
+        return True
+    return name.endswith(_DOC_ONLY_EXTENSIONS)
+
+
+def _is_test_path(path: str) -> bool:
+    """True when ``path`` matches a common test-file convention across the
+    languages this loop contributes to (this repo targets arbitrary
+    third-party upstream repos, not only Python)."""
+    name = path.rsplit("/", 1)[-1]
+    lower = path.lower()
+    if "/test/" in lower or "/tests/" in lower or "/__tests__/" in lower:
+        return True
+    if "/spec/" in lower or "/specs/" in lower:
+        return True
+    return bool(
+        re.search(
+            r"(^|[._-])(test|tests|spec)([._-]|$)", name, flags=re.IGNORECASE
+        )
+        or re.search(r"_test\.\w+$", name, flags=re.IGNORECASE)
+        or re.search(r"\.test\.\w+$", name, flags=re.IGNORECASE)
+        or re.search(r"\.spec\.\w+$", name, flags=re.IGNORECASE)
+    )
+
+
+# Patterns that demonstrate an assertion pinned to a concrete observable
+# value — a specific expected string/number/collection/line, not merely
+# "no exception" or "truthy". Covers the ecosystems this loop most commonly
+# contributes to (Python unittest/pytest, JS/TS Jest/Vitest, Go, Rust).
+_MEANINGFUL_ASSERTION_PATTERNS = tuple(
+    re.compile(p)
+    for p in (
+        r"assert\s+.+==(?!=)",              # assert x == <expected>
+        r"assert\s+.+!=(?!=)",              # assert x != <expected>
+        r"assert\s+\S+\s+in\s+\S+",         # assert x in y
+        r"assert\s+\S+\s+not\s+in\s+\S+",   # assert x not in y
+        r"assertequal\(",
+        r"assertnotequal\(",
+        r"assertin\(",
+        r"assertnotin\(",
+        r"assertlistequal\(",
+        r"assertdictequal\(",
+        r"assertsequenceequal\(",
+        r"assertalmostequal\(",
+        r"assertregex\(",
+        r"\.tobe\(",                        # Jest/Vitest: expect(x).toBe(y)
+        r"\.toequal\(",
+        r"\.tocontain\(",
+        r"\.tomatch\(",
+        r"\.tohavelength\(",
+    )
+)
+
+# Patterns that look like an assertion but only prove "it ran"/"it's
+# truthy" — exactly the shape of the two motivating bugs (silent multi-file
+# corruption, a dropped blank line): neither would have failed a check this
+# weak. Flagged so they never count on their own as satisfying the gate.
+_WEAK_ASSERTION_PATTERNS = tuple(
+    re.compile(p)
+    for p in (
+        r"assert\s+true\b",
+        r"assert\s+1\b\s*$",
+        r"asserttrue\(\s*true\s*\)",
+        r"asserttrue\(\s*1\s*\)",
+        r"returncode\s*==\s*0",
+        r"exit_code\s*==\s*0",
+        r"exitcode\s*==\s*0",
+        r"\.tobetruthy\(\)",
+        r"\.not\.tothrow\(\)",
+    )
+)
+
+
+def _diff_added_lines_by_file(diff_text: str) -> dict:
+    """Parse a unified diff into ``{path: [added_line, ...]}``.
+
+    Deliberately minimal (no third-party diff library, matching this repo's
+    dependency-free convention): tracks the current file from ``+++ b/...``
+    headers and collects ``+``-prefixed content lines, skipping the
+    ``+++``/``---`` file-header lines themselves.
+    """
+    files: dict = {}
+    current: Optional[str] = None
+    for line in diff_text.splitlines():
+        if line.startswith("+++ "):
+            raw = line[4:].strip()
+            if raw == "/dev/null":
+                current = None
+                continue
+            current = raw[2:] if raw.startswith(("a/", "b/")) else raw
+            files.setdefault(current, [])
+            continue
+        if line.startswith("--- "):
+            continue
+        if current is not None and line.startswith("+"):
+            files[current].append(line[1:])
+    return files
+
+
+def require_observable_assertion(diff_text: str) -> None:
+    """Gate: a candidate that touches production code must also add a test
+    assertion pinned to a concrete observable value.
+
+    A pure test-only, docs-only, or non-code diff (no files outside the
+    test convention were touched) has nothing to require and passes
+    trivially — this gate only fires once the candidate actually mutates
+    behavior. Raises ``InsufficientTestAssertionError`` when production
+    code changed but no added test line matches a meaningful assertion
+    pattern (or every match is one of the weak "just ran"/"just truthy"
+    shapes this gate exists to reject).
+    """
+    files = _diff_added_lines_by_file(diff_text)
+    code_files = [
+        p for p in files if not _is_test_path(p) and not _is_doc_only_path(p)
+    ]
+    test_files = [p for p in files if _is_test_path(p)]
+
+    if not code_files:
+        return  # nothing production-facing changed; no test is required here
+
+    if not test_files:
+        raise InsufficientTestAssertionError(
+            "candidate touches production file(s) "
+            f"({', '.join(sorted(code_files))}) but adds no test file — "
+            "a fail-before/pass-after test is mandatory (PLAYBOOK.md Phase "
+            "5, rule 4)"
+        )
+
+    for path in test_files:
+        for added_line in files[path]:
+            lowered = added_line.lower()
+            if any(p.search(lowered) for p in _WEAK_ASSERTION_PATTERNS):
+                continue
+            if any(p.search(lowered) for p in _MEANINGFUL_ASSERTION_PATTERNS):
+                return
+
+    raise InsufficientTestAssertionError(
+        "candidate touches production file(s) "
+        f"({', '.join(sorted(code_files))}) but the added test lines in "
+        f"({', '.join(sorted(test_files))}) contain no assertion pinned to "
+        "a concrete observable value — proving the command merely ran "
+        "without error (e.g. exit code 0, a bare truthy check) is not "
+        "sufficient; assert the actual expected content/line/value"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator — sequences 1-6 for one candidate
 # ---------------------------------------------------------------------------
 
@@ -429,17 +616,27 @@ def run_prototype_stage(
     delivery_owner: str,
     verdict_kind: JudgeVerdictKind,
     verdict_reasons: str = "",
+    diff_text: Optional[str] = None,
     runner: Callable[..., "subprocess.CompletedProcess"] = subprocess.run,
 ) -> PrototypeStageResult:
     """The full prototype-first sequence for one candidate:
 
     double dedup (before) -> reproducer/spike required -> isolated worktree
-    -> double dedup (after) -> independent judge -> (ACCEPT only) delivery
-    handoff. ``github`` is wrapped in a ``ReadOnlyGuard`` for the whole call
-    so no code path in this function — nor anything it calls — can reach a
-    mutating GitHub effect; the returned ``guard`` lets callers assert zero
-    attempted mutations, and the underlying mock/stub passed in as
-    ``github`` will show zero actual calls.
+    -> double dedup (after) -> observable-assertion check -> independent
+    judge -> (ACCEPT only) delivery handoff. ``github`` is wrapped in a
+    ``ReadOnlyGuard`` for the whole call so no code path in this function —
+    nor anything it calls — can reach a mutating GitHub effect; the
+    returned ``guard`` lets callers assert zero attempted mutations, and
+    the underlying mock/stub passed in as ``github`` will show zero actual
+    calls.
+
+    ``diff_text``: the candidate's unified diff (e.g. ``git diff`` inside
+    the worktree), when available at call time. Optional and defaulted to
+    ``None`` for backward compatibility with callers that check the diff
+    themselves elsewhere in the loop; when provided, ``run_prototype_stage``
+    also enforces ``require_observable_assertion`` before handing the
+    candidate to the judge — a candidate whose only test coverage proves
+    "it ran" never reaches a verdict.
     """
     guard = ReadOnlyGuard(github)
 
@@ -457,6 +654,11 @@ def run_prototype_stage(
     # Double dedup, part 2: after prototyping, before promotion.
     dedup_index.check(title)
     dedup_index.record(title)
+
+    # Quality of the test: a code-touching candidate must add an assertion
+    # pinned to a concrete observable value, not just "it ran".
+    if diff_text is not None:
+        require_observable_assertion(diff_text)
 
     # Independent judge decides ACCEPT | REVISE | REJECT.
     verdict = judge_candidate(candidate_id, judge_id, creator_id, verdict_kind, verdict_reasons)

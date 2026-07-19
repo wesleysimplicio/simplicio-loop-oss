@@ -366,6 +366,180 @@ class TestLoadPrototypePolicy(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# 7b. Observable-assertion requirement (DOD.md layer 3)
+# ---------------------------------------------------------------------------
+
+def _diff(*, changed_file=None, changed_lines=None, test_file=None, test_lines=None):
+    """Build a minimal unified diff touching up to one code file and one
+    test file, for exercising require_observable_assertion in isolation."""
+    parts = []
+    if changed_file:
+        parts.append(f"diff --git a/{changed_file} b/{changed_file}")
+        parts.append(f"--- a/{changed_file}")
+        parts.append(f"+++ b/{changed_file}")
+        parts.append("@@ -1,1 +1,%d @@" % (len(changed_lines or [])))
+        for line in changed_lines or ["+    return fixed_value"]:
+            parts.append(line if line.startswith(("+", "-", " ")) else f"+{line}")
+    if test_file:
+        parts.append(f"diff --git a/{test_file} b/{test_file}")
+        parts.append(f"--- a/{test_file}")
+        parts.append(f"+++ b/{test_file}")
+        parts.append("@@ -1,1 +1,%d @@" % (len(test_lines or [])))
+        for line in test_lines or []:
+            parts.append(line if line.startswith(("+", "-", " ")) else f"+{line}")
+    return "\n".join(parts) + "\n"
+
+
+class TestRequireObservableAssertion(unittest.TestCase):
+    def test_docs_only_diff_needs_no_test(self):
+        diff = _diff(changed_file="README.md", changed_lines=["+Some doc text"])
+        pg.require_observable_assertion(diff)  # must not raise
+
+    def test_test_only_diff_needs_no_further_test(self):
+        diff = _diff(
+            test_file="tests/test_thing.py",
+            test_lines=["+def test_x():", "+    assert 1 == 1"],
+        )
+        pg.require_observable_assertion(diff)  # must not raise
+
+    def test_code_change_without_any_test_file_blocks(self):
+        diff = _diff(changed_file="src/parser.py", changed_lines=["+    return lines[i]"])
+        with self.assertRaises(pg.InsufficientTestAssertionError):
+            pg.require_observable_assertion(diff)
+
+    def test_code_change_with_only_weak_returncode_assertion_blocks(self):
+        """Regression shape for motivating bug #2 (a line-selection regex
+        that quietly swallowed a blank line): a test that only checks the
+        command exited 0 would not have caught it."""
+        diff = _diff(
+            changed_file="src/line_selector.py",
+            changed_lines=["+    return re.sub(pattern, '', text)"],
+            test_file="tests/test_line_selector.py",
+            test_lines=[
+                "+def test_runs_ok():",
+                "+    result = subprocess.run(['tool', 'in.txt'])",
+                "+    assert result.returncode == 0",
+            ],
+        )
+        with self.assertRaises(pg.InsufficientTestAssertionError):
+            pg.require_observable_assertion(diff)
+
+    def test_code_change_with_only_bare_truthy_assertion_blocks(self):
+        diff = _diff(
+            changed_file="src/apply_plan.py",
+            changed_lines=["+    write_all(files, plan)"],
+            test_file="tests/test_apply_plan.py",
+            test_lines=["+def test_it_runs():", "+    assert True"],
+        )
+        with self.assertRaises(pg.InsufficientTestAssertionError):
+            pg.require_observable_assertion(diff)
+
+    def test_code_change_with_concrete_value_assertion_passes(self):
+        """Regression shape for motivating bug #1 (silent corruption in a
+        multi-file edit plan): asserting the exact resulting content of
+        every touched file is what would have caught it."""
+        diff = _diff(
+            changed_file="src/apply_plan.py",
+            changed_lines=["+    write_all(files, plan)"],
+            test_file="tests/test_apply_plan.py",
+            test_lines=[
+                "+def test_unrelated_file_untouched():",
+                "+    apply_plan(plan, files)",
+                "+    self.assertEqual(read('b.txt'), 'original content')",
+            ],
+        )
+        pg.require_observable_assertion(diff)  # must not raise
+
+    def test_code_change_with_line_content_assertion_passes(self):
+        diff = _diff(
+            changed_file="src/line_selector.py",
+            changed_lines=["+    return re.sub(pattern, '', text)"],
+            test_file="tests/test_line_selector.py",
+            test_lines=[
+                "+def test_blank_line_preserved():",
+                "+    lines = select(sample_text)",
+                "+    self.assertEqual(lines[3], '')",
+            ],
+        )
+        pg.require_observable_assertion(diff)  # must not raise
+
+    def test_js_expect_tobe_assertion_passes(self):
+        diff = _diff(
+            changed_file="src/parser.js",
+            changed_lines=["+  return lines[i];"],
+            test_file="src/parser.test.js",
+            test_lines=["+test('keeps blank line', () => {", "+  expect(lines[3]).toBe('');", "+});"],
+        )
+        pg.require_observable_assertion(diff)  # must not raise
+
+
+class TestRunPrototypeStageObservableAssertion(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.repo = _make_bare_repo(self.tmp)
+        self.dedup_path = self.tmp / "index.json"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _base_kwargs(self, github, title="Fix off-by-one in tokenizer"):
+        return dict(
+            candidate_id="cand-1",
+            title=title,
+            evidence=pg.ReproducerEvidence(
+                kind=pg.CandidateKind.BUG,
+                command="pytest tests/test_tok.py::test_edge",
+                exit_code_before=1,
+                output_before="AssertionError",
+            ),
+            repo_root=self.repo,
+            branch="prototype/cand-1",
+            worktree_dir=self.tmp / "wt-cand-1",
+            default_branch="main",
+            dedup_index=pg.DuplicateIndex.load(self.dedup_path),
+            github=github,
+            creator_id="implementer-a",
+            judge_id="reviewer-b",
+            delivery_owner="delivery-bot",
+            verdict_kind=pg.JudgeVerdictKind.ACCEPT,
+        )
+
+    def test_missing_diff_text_skips_the_check_for_back_compat(self):
+        github = FakeGitHubEffects()
+        result = pg.run_prototype_stage(**self._base_kwargs(github))
+        self.assertIsNotNone(result.handoff)
+
+    def test_weak_diff_blocks_before_judge_sees_the_candidate(self):
+        github = FakeGitHubEffects()
+        kwargs = self._base_kwargs(github)
+        kwargs["diff_text"] = _diff(
+            changed_file="src/apply_plan.py",
+            changed_lines=["+    write_all(files, plan)"],
+            test_file="tests/test_apply_plan.py",
+            test_lines=["+def test_it_runs():", "+    assert True"],
+        )
+        with self.assertRaises(pg.InsufficientTestAssertionError):
+            pg.run_prototype_stage(**kwargs)
+        self.assertEqual(github.open_pr_calls, [])
+
+    def test_meaningful_diff_reaches_delivery_handoff(self):
+        github = FakeGitHubEffects()
+        kwargs = self._base_kwargs(github)
+        kwargs["diff_text"] = _diff(
+            changed_file="src/apply_plan.py",
+            changed_lines=["+    write_all(files, plan)"],
+            test_file="tests/test_apply_plan.py",
+            test_lines=[
+                "+def test_unrelated_file_untouched():",
+                "+    self.assertEqual(read('b.txt'), 'original content')",
+            ],
+        )
+        result = pg.run_prototype_stage(**kwargs)
+        self.assertIsNotNone(result.handoff)
+
+
+# ---------------------------------------------------------------------------
 # Integration: the full prototype stage orchestrator
 # ---------------------------------------------------------------------------
 
