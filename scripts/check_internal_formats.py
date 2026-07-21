@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check Simplicio-owned internal JSON paths without creating a JSON report.
 
-The baseline mode classifies current findings and exits non-zero only for
+Baseline mode classifies current findings and exits non-zero only for
 unclassified paths. Strict mode (SIMPLICIO_FORMAT_STRICT=1 or --strict)
 also fails for classified internal JSON until its migration issue is complete.
 Output is Markdown on stdout; callers may persist the evidence through HBP.
@@ -12,16 +12,15 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "config" / "json-boundaries.toml"
 SKIP = {".git", "work", "node_modules", "__pycache__", ".venv", "dist", "build"}
 JSON_SUFFIXES = {".json", ".jsonl", ".ndjson"}
-ALLOWED = {"toolchain_mandated", "external_output_contract", "third_party_protocol_boundary", "historical_documentation", "runtime_workspace", "policy_scanner"}
 INTERNAL = {"internal_persistence", "internal_cache", "internal_ipc", "internal_fixture_or_evidence", "internal_index"}
 SOURCE_SUFFIXES = {".py", ".js", ".mjs", ".ts", ".tsx", ".rs", ".sh", ".ps1"}
+
 
 def parse_policy() -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
@@ -45,6 +44,7 @@ def parse_policy() -> list[dict[str, str]]:
         entries.append(current)
     return entries
 
+
 def match(path: str, entries: list[dict[str, str]]) -> dict[str, str] | None:
     for entry in entries:
         pattern = entry.get("pattern", "")
@@ -54,20 +54,21 @@ def match(path: str, entries: list[dict[str, str]]) -> dict[str, str] | None:
             return entry
     return None
 
+
 def files() -> list[Path]:
-    found: list[Path] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or any(part in SKIP for part in path.parts):
-            continue
-        if path.suffix.lower() in JSON_SUFFIXES:
-            found.append(path)
-    return found
+    return [
+        path for path in ROOT.rglob("*")
+        if path.is_file()
+        and not any(part in SKIP for part in path.parts)
+        and path.suffix.lower() in JSON_SUFFIXES
+    ]
+
 
 def source_hits() -> list[tuple[Path, int, str]]:
     patterns = (
-        re.compile(r"(^|\\s)(import|from)\\s+json\\b"),
-        re.compile(r"serde_json|JSON\\.parse\\s*\\(|JSON\\.stringify\\s*\\("),
-        re.compile(r"\\.jsonl\\b|\\.ndjson\\b"),
+        re.compile(r"(^|\s)(import|from)\s+json\b"),
+        re.compile(r"serde_json|JSON\.parse\s*\(|JSON\.stringify\s*\("),
+        re.compile(r"\.jsonl\b|\.ndjson\b"),
     )
     hits: list[tuple[Path, int, str]] = []
     for path in ROOT.rglob("*"):
@@ -75,10 +76,13 @@ def source_hits() -> list[tuple[Path, int, str]]:
             continue
         if any(part in SKIP for part in path.parts) or path == Path(__file__):
             continue
-        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+        ):
             if any(pattern.search(line) for pattern in patterns):
                 hits.append((path, number, line.strip()))
     return hits
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -108,18 +112,19 @@ def main() -> int:
         else:
             allowed.append(f"{rel}:{line} ({entry.get('category', 'unknown')})")
     print("# Simplicio internal-format policy")
-    print(f"\\nMode: {'strict' if strict else 'baseline'}")
-    print("\\n## Allowed or explicitly bounded")
-    print("\\n".join(f"- {item}" for item in sorted(set(allowed))) or "- none")
-    print("\\n## Migration required")
-    print("\\n".join(f"- {item}" for item in sorted(set(migration))) or "- none")
-    print("\\n## Unclassified")
-    print("\\n".join(f"- {item}" for item in sorted(set(unknown))) or "- none")
+    print(f"\nMode: {'strict' if strict else 'baseline'}")
+    print("\n## Allowed or explicitly bounded")
+    print("\n".join(f"- {item}" for item in sorted(set(allowed))) or "- none")
+    print("\n## Migration required")
+    print("\n".join(f"- {item}" for item in sorted(set(migration))) or "- none")
+    print("\n## Unclassified")
+    print("\n".join(f"- {item}" for item in sorted(set(unknown))) or "- none")
     if unknown:
         return 1
     if strict and migration:
         return 2
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
