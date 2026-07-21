@@ -1,0 +1,32 @@
+# Simplicio internal-format policy for simplicio-loop-oss.
+# This inventory is intentionally TOML, never JSON.
+version = 1
+policy = "simplicio-binary-internal-formats/v1"
+mode = "baseline"
+owner = "wesleysimplicio"
+
+# Current repository state is Markdown/Python and has no active JSON data file.
+# These scopes describe where future/generated state must be classified.
+[[paths]]
+pattern = "projects/**"
+category = "internal_persistence"
+owner = "wesleysimplicio"
+target_format = "HBP for append-only receipts; HBI for indexed snapshots"
+reason = "Committed OSS contribution profiles, logs and anti-duplicate indexes"
+review = "2026-10-01"
+
+[[paths]]
+pattern = "work/**"
+category = "runtime_workspace"
+owner = "wesleysimplicio"
+target_format = "ephemeral clone; no Simplicio state"
+reason = "Ignored upstream checkout; must never become an internal artifact"
+review = "2026-10-01"
+
+[[paths]]
+pattern = "scripts/check_internal_formats.py"
+category = "policy_scanner"
+owner = "wesleysimplicio"
+target_format = "Markdown output plus HBP receipt"
+reason = "Scanner source contains detection patterns and is excluded from its own scan"
+review = "2026-10-01"
