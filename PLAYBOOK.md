@@ -28,11 +28,12 @@ contribution priorities as captured in its PROFILE.md.
 - **Once per project:** Phase R (reconnaissance) when PROFILE.md is missing.
 - **Every run:** Phase 0 (sync) + Phase 2 (babysit, MAINTAINER-FIRST:
   maintainer feedback on any of our PRs is always the run's #1 task) +
-  Phase 2b (fresh-issue sweep). Then implement 1–2 backlog/fresh candidates
+  Phase 2b (fresh-issue sweep). Then fill the bounded fast-lane pool with
+  backlog/fresh candidates
   (Phase 5) while verifiable quality candidates exist — when
   `DAILY_PR_TARGET` is `0` (default) there is NO numeric daily cap; a
   non-zero value restores a hard cap. Nothing actionable and no backlog →
-  append one line to the log, push state, and end.
+  append one line to the log, push state, and end. See `docs/FAST_LANE.md`.
 - **Once per day (planning):** on the first run of a local calendar day where
   `logs/audit-YYYY-MM-DD.md` does not yet exist for this project, run
   Phases 1 → 1b → 1c → 3 → 3b → 3c → 4 and save approved candidates to
@@ -84,7 +85,10 @@ contribution priorities as captured in its PROFILE.md.
 3. **Double dedup is mandatory**: at planning (Phase 4) AND immediately
    before opening each PR (backlogs go stale in hours — active repos see
    good candidates claimed by third parties within minutes). Also check
-   `logs/opened-prs.md` to never duplicate ourselves.
+   `logs/opened-prs.md` to never duplicate ourselves. The fast lane adds a
+   short reservation lease before deep work so our own workers do not race;
+   the final GitHub re-query remains mandatory because external contributors
+   can still publish during the lease.
 4. **Mandatory test on bug fixes.** No fail-before/pass-after test → no PR.
 5. Respect PROFILE.md "Forbidden themes", the generic forbidden classes
    (SKILL.md guardrails: mass mechanical cleanup, trivial-theme series,
@@ -343,6 +347,18 @@ gh issue list --repo "$UPSTREAM_REPO" --state open --limit 15 \
   already scanned) — only evaluate issues newer than that; update the file
   after this run regardless of outcome. This keeps the scan cheap (a handful
   of genuinely new issues per run, not a full re-read of 15 every time).
+- For the first-mover window, do not deep-read every issue serially. Build
+  small candidate cards from metadata, run the cheap PR/branch/claim search,
+  and reserve the best independent candidates for a short lease before deep
+  intake. The initial capacity target is `FAST_LANE_BATCH_TARGET` (10 by
+  default); the effective count is the minimum of that target,
+  `FAST_LANE_MAX_IN_FLIGHT`, newcomer/open-review caps, available resources,
+  and genuinely independent candidates.
+- A reservation is an internal coordination record. Publish a visible claim
+  comment only when the project's PROFILE permits it and the source-level
+  sanity check has passed. Release the reservation immediately when the
+  candidate is disproven, claimed, duplicated, or blocked; record the release
+  and its reason. Never leave a misleading claim behind.
 - For each new issue, a fast triage, in order — stop at the first disqualifier:
   1. Does it already have a comment/linked PR claiming it (`comments > 0` is
      a cheap pre-filter; `gh issue view <N> --json comments` to confirm no
@@ -363,11 +379,14 @@ gh issue list --repo "$UPSTREAM_REPO" --state open --limit 15 \
   of today's backlog — ahead of already-ranked candidates — and consider
   implementing it THIS run if the daily cap allows (Phase 5 doesn't have to
   wait for the once-daily planning cycle to pick it up).
-- **Speed is a tie-breaker between equally-qualified candidates, never a
-  license to skip a gate.** A fast, sloppy PR still gets closed — it just
-  gets closed faster, and burns the same reputation. Every guardrail (dedup,
-  mandatory test, no fabrication, forbidden themes) applies identically to
-  a fresh-issue candidate and a once-daily-planning one.
+- **Speed is a scheduling priority among already-qualified candidates, never
+  a license to skip a gate.** A fast, sloppy PR still gets closed — it just
+  gets closed faster, and burns the same reputation. After the initial batch,
+  patrol after `FAST_LANE_PATROL_MINUTES` (5 by default); if genuinely new,
+  independent issues exist, start at most `FAST_LANE_FOLLOWUP_BATCH` (2 by
+  default). Every guardrail (dedup, mandatory test, no fabrication, forbidden
+  themes) applies identically to a fresh-issue candidate and a once-daily-
+  planning one.
 
 ## Phase 3 — Mechanical audit (once/day)
 
@@ -511,12 +530,14 @@ to claim it).
 
 ## Phase 5 — Implement (every run; quality is the only limit by default)
 
-Consume the day's backlog + Phase 2b fresh candidates, 1–2 candidates per
-run — each with EVERY gate complete; never parallelize at the cost of
-validation. With `DAILY_PR_TARGET=0` (default) there is no daily stop-count;
-a non-zero value stops at that many PRs for the day (healthy default 3–5;
-`NEWCOMER_DAILY_PR_CAP` while we have zero merges in this project). For
-each candidate:
+Consume the day's backlog + Phase 2b fresh candidates as a bounded fast-lane
+batch — target up to `FAST_LANE_BATCH_TARGET` (10), with at most
+`FAST_LANE_MAX_IN_FLIGHT` candidates in isolated worktrees. Never parallelize
+at the cost of validation. With `DAILY_PR_TARGET=0` (default) there is no
+daily stop-count; a non-zero value stops at that many PRs for the day, and the
+newcomer cap still applies while we have zero merges in this project. For each
+candidate, start the next independent candidate while this one waits on its
+own test or review; same-file work remains serialized:
 
 1. `git switch -c fix/<slug> "$DEFAULT_BRANCH"`
 2. **When `/simplicio-loop` is driving this run** (SKILL.md's "Driving one
@@ -565,13 +586,22 @@ each candidate:
      --title "fix(<scope>): <description> (#<issue>)" \
      --body-file <filled-body>.md
    ```
-9. Record in `logs/opened-prs.md`: date, number, title, theme/keywords (this
-   is the anti-self-duplicate index).
+9. Record in `logs/opened-prs.md`: date, number, title, theme/keywords,
+   `time_to_reserve`, `time_to_repro`, `time_to_pr`, `duplicate_lost`, and
+   `first_pass_review` (this is the anti-self-duplicate index).
+10. Five minutes after the initial batch is opened, patrol open PRs and poll
+    fresh issues. If new independent candidates exist, begin at most
+    `FAST_LANE_FOLLOWUP_BATCH` (2) while repairing feedback/CI first.
 
 ## Phase 6 — Log + persist state (every run)
 
 - Fast path: one appended line (`HH:MM — nothing actionable` or what was
   done).
+- Fast-lane runs additionally append measured candidate timing fields and the
+  quality ratios `approved/opened` and `merged/opened`. Unknown values are
+  `pending`, never estimates. If `duplicate_lost` or first-pass rejection
+  rises for two consecutive runs, shrink the pool to one and refresh the
+  project profile before expanding it again.
 - Heavy cycle: complete `logs/YYYY-MM-DD.md` with the strategic reflection,
   contributor patterns, PRs babysat, PRs opened, candidates discarded and
   why, the day's lessons, and the **cumulative merge rate**.

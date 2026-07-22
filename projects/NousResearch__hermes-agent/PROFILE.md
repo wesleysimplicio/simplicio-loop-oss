@@ -176,6 +176,15 @@ gates as the only limiter):
 - `RUN_INTERVAL_MINUTES=5`
 - `STALE_CLOSE_DAYS=4` (auto-close ENABLED here — global default 0/disabled —
   because the queue pressure is real; all Phase 2.4 guards still apply)
+- `FAST_LANE_ENABLED=true`
+- `FAST_LANE_BATCH_TARGET=10` (capacity target; open only independent,
+  evidence-complete candidates)
+- `FAST_LANE_MAX_IN_FLIGHT=10` (reduce to the newcomer/open-review/resource
+  limit when any of those gates is lower)
+- `FAST_LANE_PATROL_MINUTES=5`
+- `FAST_LANE_FOLLOWUP_BATCH=2` after a patrol when genuinely new issues exist
+- `FAST_LANE_CLAIM_TTL_MINUTES=25`; release claims immediately on duplicate,
+  failed reproduction, policy block, or failed validation
 
 Everything else uses config.env defaults (`STALE_PING_DAYS=14`,
 `MAX_SALVAGES_PER_DAY=1`, `DIFF_LINES_TARGET=250`).

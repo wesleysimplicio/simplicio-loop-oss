@@ -10,7 +10,8 @@ loop that works against **any upstream GitHub repository**. One run = one
 iteration. The loop is portable: no fixed paths, no hardcoded usernames —
 everything is resolved at runtime from this workspace, `gh`, and `git`.
 
-**PRIMARY KPI: MERGE RATE (merged/opened), not volume.** With
+**PRIMARY KPI: MERGE RATE (merged/opened), not volume.** The fast-lane
+secondary KPI is measured time-to-reviewable-PR, not raw PR count. With
 `DAILY_PR_TARGET=0` (default since 2026-07-15) there is NO numeric daily
 cap — quality gates are the only limiter (every PR: real issue/symptom,
 double dedup, fail-before/pass-after test, adversarial review, real
@@ -143,13 +144,38 @@ run the normal per-repo pipeline against each independently:
 5. Tunables (`DAILY_PR_TARGET`, `DAILY_PR_HEALTHY`, `MAX_OPEN_UNREVIEWED`,
    `STALE_CLOSE_DAYS`, `STALE_PING_DAYS`, `MAX_SALVAGES_PER_DAY`,
    `DIFF_LINES_TARGET`, `NEWCOMER_DAILY_PR_CAP`,
-   `NEWCOMER_MAX_OPEN_UNREVIEWED`) come from `config.env`; a project's
+   `NEWCOMER_MAX_OPEN_UNREVIEWED`, `FAST_LANE_*`) come from `config.env`; a project's
    PROFILE.md "Tunables" section overrides them; environment variables
    override everything. `STALE_CLOSE_DAYS=0` means auto-close is disabled
    (the default — enable it per project only under real queue pressure).
    **Newcomer reputation gate**: in any project where we have zero merged
    PRs, `NEWCOMER_DAILY_PR_CAP` and `NEWCOMER_MAX_OPEN_UNREVIEWED` replace
    the normal caps until our first merge there.
+
+## Fast lane: first-mover speed without quality erosion
+
+Read [`docs/FAST_LANE.md`](docs/FAST_LANE.md) before running a competitive,
+fast-moving project. The default flow is a bounded pipeline, not a
+single-threaded queue:
+
+1. Poll fresh issues and existing PR feedback in parallel.
+2. Apply the cheap metadata/source check, then reserve up to
+   `FAST_LANE_MAX_IN_FLIGHT` independent candidates for a short
+   `FAST_LANE_CLAIM_TTL_MINUTES` lease. Same-file candidates are serialized.
+3. Run deep intake, repro, implementation, and adversarial review in isolated
+   worktrees. A candidate that fails any gate releases immediately.
+4. After the candidate's own required checks pass, re-dedup and push/open its
+   PR immediately. Do not wait for unrelated candidates or the daily log.
+5. Five minutes after the initial batch, patrol the open PRs and scan for new
+   issues. If new independent issues exist, start at most
+   `FAST_LANE_FOLLOWUP_BATCH` more candidates.
+
+The initial capacity target is `FAST_LANE_BATCH_TARGET=10`; it is an attempt
+target, never permission to duplicate work or bypass a project policy. The
+newcomer cap, open-review cap, resource limits, available independent issues,
+and every quality gate remain binding. Record measured
+`time_to_reserve`, `time_to_repro`, `time_to_pr`, `duplicate_lost`,
+`first_pass_review`, and `maintainer_response_hours` in the daily log.
 
 ## Bootstrap (idempotent — run every iteration before anything else)
 
@@ -209,12 +235,13 @@ run the normal per-repo pipeline against each independently:
 4. **Implement** (every run, after babysit): while the backlog (or Phase 2b
    fresh-issue sweep) has verifiable quality candidates — and, when
    `DAILY_PR_TARGET` is non-zero, today's opened-PR count is below it —
-   implement 1–2 of them: branch off the updated default branch; the smallest change that
+   fill the bounded fast-lane pool, up to the initial target of 10 eligible
+   candidates: each gets its own branch/worktree and the smallest change that
    solves the problem (target ≤ `DIFF_LINES_TARGET` changed lines — above
    that, rethink the scope); a fail-before/pass-after test is mandatory for
-   bug fixes (using the profile's test commands); adversarial review before
-   push; immediate re-dedup before opening each PR; record every opened PR
-   in `projects/SLUG/logs/opened-prs.md`.
+   bug fixes; adversarial review happens before push; immediate re-dedup
+   happens immediately before each PR; and each opened PR is recorded in
+   `projects/SLUG/logs/opened-prs.md` with timing metrics.
 5. **Persist state** (every run, last step): commit `projects/SLUG/` changes
    (logs + profile updates) and any PLAYBOOK.md lesson updates in the
    workspace repo and push — this is what lets any other computer or LLM
@@ -411,8 +438,9 @@ Never skip this gate.
 - DUPLICATES ARE FORBIDDEN: dedup at planning time, re-dedup immediately
   before opening each PR (backlogs go stale in hours), and always check
   `projects/SLUG/logs/opened-prs.md` so we never duplicate ourselves.
-- At most `DAILY_PR_TARGET` new PRs per day per project — and the KPI is
-  merge rate, so the healthy default is 3–5. The cap NEVER justifies
+- `DAILY_PR_TARGET > 0` is a hard daily cap; `0` means no numeric cap. The
+  fast-lane batch target is a capacity target, not a quality override. The KPI
+  remains merge rate, so the healthy default is 3–5. The cap NEVER justifies
   lowering quality or skipping gates — fewer PRs with a logged reason is
   the correct outcome when good candidates run out.
 - Mandatory fail-before/pass-after test on every bug fix. Never fabricate
@@ -447,6 +475,14 @@ Never skip this gate.
   `## Summary` → `## Changes` → `## Validation` with a REAL
   command→result table → `Closes #NNN`); diagrams only when the flow is
   genuinely hard to explain in text.
+
+## Fast-lane metrics and review feedback
+
+Every daily log must include the measured candidate timings and two quality
+ratios: `approved/opened` and `merged/opened`. A duplicate that appeared after
+reservation is recorded as `duplicate_lost=true`, never hidden as a failed
+implementation. If `approved/opened` drops for two consecutive runs, shrink
+the candidate pool to one and refresh the project profile before expanding it.
 
 ## Scheduling this loop
 
