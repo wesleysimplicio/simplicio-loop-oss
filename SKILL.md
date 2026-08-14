@@ -415,6 +415,7 @@ phases 0–6 exactly as PLAYBOOK.md specifies them, with the same mandatory
 test / no-fabrication / dedup rules — those never depend on `/simplicio-loop`
 being present. `/simplicio-loop` makes the quality bar stronger when it's
 available; its absence never makes the quality bar disappear.
+**Verified Hermes presentation.** When a target is exactly `NousResearch/hermes-agent`, `NousResearch/Hermes-Bot-Mode`, or GitHub verifies it as an official Hermes plugin, and the user requests a PR visual, preview, X post, or Discord announcement, read `skills/hermes-pr-design/SKILL.md` before creating artwork or publishing copy.
 
 ## Adversarial review (before every push)
 
