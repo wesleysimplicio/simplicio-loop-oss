@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hermes PR Design"
+  short_description: "Create verified official Hermes PR visuals and social copy."
+  default_prompt: "Create an authorized Hermes Bot Mode PR visual, attach it safely, and draft the social post."
