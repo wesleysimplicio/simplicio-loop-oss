@@ -1,0 +1,26 @@
+name: tests-and-coverage
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned coverage tool
+        run: python -m pip install --disable-pip-version-check "coverage==7.6.12"
+      - name: Run unit tests with branch coverage
+        run: python -m coverage run --branch -m unittest discover -s tests -v
+      - name: Export coverage report
+        run: python -m coverage json -o coverage.json
+      - name: Enforce coverage thresholds
+        run: python scripts/check_coverage_gate.py --coverage-file coverage.json --min-line 90 --min-branch 80
